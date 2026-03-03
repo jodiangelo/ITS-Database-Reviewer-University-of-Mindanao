@@ -1,0 +1,2538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ITS Database Reviewer – University of Mindanao</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090f;
+  --surface: #0d1117;
+  --surface2: #141922;
+  --border: #1e2535;
+  --accent: #4f8ef7;
+  --accent2: #7aabff;
+  --green: #3dd68c;
+  --red: #f05252;
+  --yellow: #fbbf24;
+  --text: #dce6f5;
+  --muted: #5a6a8a;
+  --card: #0f141e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; min-height: 100vh; padding-bottom: 80px; }
+
+/* HEADER */
+header {
+  background: linear-gradient(180deg, #0a0f1a 0%, #0d1117 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 24px 16px;
+  text-align: center;
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(16px);
+}
+header h1 { font-size: clamp(16px, 2.5vw, 22px); font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+header h1 em { color: var(--accent); font-style: normal; }
+header p { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+/* STATS */
+.stats-bar {
+  display: flex; justify-content: center; gap: 24px; padding: 12px 24px;
+  background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.stat { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.stat-label { color: var(--muted); font-size: 12px; }
+.stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px; }
+.stat-val.score { color: var(--accent); }
+.stat-val.correct { color: var(--green); }
+.stat-val.wrong { color: var(--red); }
+.stat-val.unanswered { color: var(--yellow); }
+
+/* CONTROLS */
+.controls { display: flex; justify-content: center; gap: 8px; padding: 12px 24px; flex-wrap: wrap; }
+.btn { padding: 8px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger { background: #2a1215; color: var(--red); border: 1px solid #3d1c20; }
+.btn-danger:hover { background: #3d1c20; }
+
+/* FILTER */
+.filter-bar { display: flex; justify-content: center; gap: 6px; padding: 8px 24px; flex-wrap: wrap; }
+.filter-btn { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; font-family: 'Outfit', sans-serif; }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* SEARCH */
+.search-wrap { display: flex; justify-content: center; padding: 8px 24px; }
+.search-wrap input { width: 100%; max-width: 480px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 13px; font-family: 'Outfit', sans-serif; outline: none; }
+.search-wrap input:focus { border-color: var(--accent); }
+.search-wrap input::placeholder { color: var(--muted); }
+
+/* PROGRESS */
+.progress-container { padding: 6px 24px 4px; }
+.progress-bg { background: var(--surface2); border-radius: 4px; height: 4px; overflow: hidden; }
+.progress-fill { background: var(--accent); height: 100%; width: 0; transition: width .3s ease; border-radius: 4px; }
+
+/* QUESTIONS */
+.qcontainer { max-width: 860px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.qcard {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; transition: border-color .2s;
+}
+.qcard.correct { border-color: #1d4d36; }
+.qcard.wrong { border-color: #4d1d1d; }
+.qcard.hidden { display: none; }
+
+.qhead {
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px;
+  cursor: pointer; user-select: none;
+}
+.qnum {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 2px 7px; flex-shrink: 0; margin-top: 1px;
+}
+.qtext { font-size: 13.5px; line-height: 1.6; flex: 1; font-weight: 500; }
+.qstatus {
+  font-size: 13px; font-weight: 700; flex-shrink: 0; width: 22px; height: 22px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  margin-top: 1px; font-family: 'JetBrains Mono', monospace;
+}
+.qstatus.unanswered { background: var(--surface2); color: var(--muted); font-size: 10px; }
+.qstatus.correct { background: #1d4d36; color: var(--green); }
+.qstatus.wrong { background: #4d1d1d; color: var(--red); }
+.carrow { font-size: 11px; color: var(--muted); flex-shrink: 0; margin-top: 5px; transition: transform .2s; }
+.qcard.collapsed .carrow { transform: rotate(-90deg); }
+.qcard.collapsed .qbody { display: none; }
+
+.qbody { padding: 0 16px 14px 16px; }
+.multi-tag { font-size: 11px; color: var(--yellow); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; background: #2a2010; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+.choices { display: flex; flex-direction: column; gap: 6px; }
+
+.choice {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+  border-radius: 8px; border: 1px solid var(--border); background: var(--surface2);
+  cursor: pointer; transition: all .15s;
+}
+.choice:hover:not(.disabled) { border-color: var(--accent); background: #111a2e; }
+.choice.disabled { cursor: default; }
+.choice.sc { border-color: #1d4d36; background: #0d2b1e; }
+.choice.sw { border-color: #4d1d1d; background: #2b0d0d; }
+.choice.rc { border-color: #1d4d36; background: #0d2b1e; }
+
+.cletter {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+  width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center;
+  justify-content: center; background: var(--surface); color: var(--muted);
+  border: 1px solid var(--border); flex-shrink: 0; margin-top: 1px;
+}
+.choice.sc .cletter { background: var(--green); color: #000; border-color: var(--green); }
+.choice.sw .cletter { background: var(--red); color: #fff; border-color: var(--red); }
+.choice.rc .cletter { background: var(--green); color: #000; border-color: var(--green); }
+
+.ctext { font-size: 13px; line-height: 1.5; flex: 1; }
+.cicon { font-size: 13px; flex-shrink: 0; margin-top: 3px; }
+.choice.sc .cicon { color: var(--green); }
+.choice.sw .cicon { color: var(--red); }
+.choice.rc .cicon { color: var(--green); }
+
+.q-submit-btn {
+  margin-top: 10px; padding: 8px 18px; border-radius: 7px;
+  background: var(--accent); color: #fff; border: none; font-size: 13px;
+  cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 600;
+  display: none; transition: background .15s;
+}
+.q-submit-btn:hover { background: var(--accent2); }
+.q-submit-btn.show { display: inline-block; }
+
+.expl {
+  margin-top: 10px; padding: 10px 13px; border-radius: 8px;
+  background: var(--surface); border-left: 3px solid var(--accent);
+  font-size: 12.5px; color: var(--muted); line-height: 1.6; display: none;
+}
+.expl.show { display: block; }
+.expl strong { color: var(--accent2); }
+
+/* POPUP */
+#popup {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
+  backdrop-filter: blur(8px); z-index: 999; align-items: center; justify-content: center;
+}
+#popup.show { display: flex; }
+.popup-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 40px; text-align: center; max-width: 400px; width: 90%;
+}
+.popup-box h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.pop-pct { font-size: 64px; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: 8px; }
+.pop-breakdown { display: flex; justify-content: center; gap: 32px; margin: 20px 0; }
+.pb-item .pb-val { font-size: 28px; font-weight: 700; }
+.pb-item .pb-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+.pop-grade { font-size: 15px; font-weight: 700; padding: 10px 20px; border-radius: 8px; margin: 12px auto; display: inline-block; }
+.pop-grade.pass { background: #0d2b1e; color: var(--green); }
+.pop-grade.fail { background: #2b0d0d; color: var(--red); }
+.pop-btns { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+
+/* SCROLL TOP */
+#scrolltop {
+  position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px;
+  border-radius: 50%; background: var(--accent); color: #fff; border: none;
+  font-size: 16px; cursor: pointer; display: none; z-index: 200;
+  align-items: center; justify-content: center;
+}
+#scrolltop.show { display: flex; }
+
+/* BADGE */
+.type-badge {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+}
+.type-badge.multi { background: #2a2010; color: var(--yellow); }
+.type-badge.single { background: #101828; color: var(--muted); }
+
+/* PENDING HIGHLIGHT */
+.choice.pending { border-color: var(--accent); background: #111a2e; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ITS <em>Database</em> Reviewer</h1>
+  <p>University of Mindanao · 40 Random Questions · <span id="hdr-sub">Session Active</span></p>
+</header>
+
+<div class="stats-bar">
+  <div class="stat">
+    <span class="stat-label">SCORE</span>
+    <span class="stat-val score" id="st-score">0/40</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">✓</span>
+    <span class="stat-val correct" id="st-correct">0</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">✗</span>
+    <span class="stat-val wrong" id="st-wrong">0</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">–</span>
+    <span class="stat-val unanswered" id="st-unanswered">40</span>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-primary" onclick="submitAll()">Submit All &amp; Score</button>
+  <button class="btn btn-outline" onclick="toggleAll(true)">Collapse All</button>
+  <button class="btn btn-outline" onclick="toggleAll(false)">Expand All</button>
+  <button class="btn btn-danger" onclick="newSet()">🔀 New Random Set</button>
+</div>
+
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="setFilter('all',this)">All (40)</button>
+  <button class="filter-btn" onclick="setFilter('unanswered',this)">Unanswered</button>
+  <button class="filter-btn" onclick="setFilter('correct',this)">Correct</button>
+  <button class="filter-btn" onclick="setFilter('wrong',this)">Wrong</button>
+</div>
+
+<div class="search-wrap">
+  <input type="text" placeholder="Search questions or choices..." oninput="doSearch(this.value)">
+</div>
+
+<div class="progress-container">
+  <div class="progress-bg"><div class="progress-fill" id="pfill"></div></div>
+</div>
+
+<div class="qcontainer" id="qc"></div>
+
+<div id="popup">
+  <div class="popup-box">
+    <h2>📊 Quiz Results</h2>
+    <div class="pop-pct" id="ppct">0%</div>
+    <div class="pop-breakdown">
+      <div class="pb-item"><div class="pb-val" id="pcor" style="color:var(--green)">0</div><div class="pb-label">Correct</div></div>
+      <div class="pb-item"><div class="pb-val" id="pwrg" style="color:var(--red)">0</div><div class="pb-label">Wrong</div></div>
+      <div class="pb-item"><div class="pb-val" id="pskp" style="color:var(--yellow)">0</div><div class="pb-label">Skipped</div></div>
+    </div>
+    <div class="pop-grade" id="pgrade"></div>
+    <div class="pop-btns">
+      <button class="btn btn-outline" onclick="closePopup()">Review Answers</button>
+      <button class="btn btn-danger" onclick="newSet();closePopup()">🔀 New Set</button>
+    </div>
+  </div>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ============================================================
+// QUESTION DATA — 200 questions exactly from PDF
+// ============================================================
+const ALL_QUESTIONS = [
+  {
+    id:1,
+    text:"You manage a database named Exams accessed via a website. The website is regularly accessed by users in different countries. You are redesigning a table named History that records when users have purchased and taken online exams. You need one of the columns in the History table to record what time of day that a user has taken an exam. Additionally, you need this column to have time zone awareness. What data type should you use?",
+    type:"single",
+    choices:["Use two different columns with one column of datetime, and the second column indicating the UTC offset","datetimeoffset","datetime","datetime2"],
+    answer:[1],
+    expl:"<strong>datetimeoffset</strong> stores date, time, and the UTC offset in a single column, providing full time zone awareness."
+  },
+  {
+    id:2,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"<u>Views</u> are database objects that contain all of the data in a database.\"\n\nIf the statement is incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["Tables","Queries","No change is needed","Stored procedures"],
+    answer:[0],
+    expl:"<strong>Tables</strong> are the database objects that contain all of the data. Views are virtual tables derived from SELECT queries — they do not store data themselves."
+  },
+  {
+    id:3,
+    text:"You have two tables named Cars and Color as defined below. The two tables are related by ColorId. You run the following SQL statement:\n\nSELECT * FROM Cars INNER JOIN Color ON Cars.ColorId = Color.ColorId\n\nHow many rows does the SQL statement return?",
+    type:"single",
+    choices:["6","0","3","2"],
+    answer:[3],
+    expl:"An INNER JOIN returns only matching rows. Based on the Cars and Color tables in the PDF (Cars has 3 rows, but only 2 have matching ColorIds in the Color table), the result is <strong>2 rows</strong>."
+  },
+  {
+    id:4,
+    text:"Fill in the blank with the appropriate word.\n\nThe _______________ model for database management is a database model based on first-order predicate logic.",
+    type:"single",
+    choices:["Traditional","Truncate","Relational"],
+    answer:[2],
+    expl:"The <strong>Relational</strong> model is based on first-order predicate logic. It organizes data into tables and uses mathematical set theory to manage relationships."
+  },
+  {
+    id:5,
+    text:"You work as a MySQL Database Administrator. Your server crashed and it was recovered and made online within half an hour. What will you do to ensure that the table structure and contents are in a proper state?",
+    type:"single",
+    choices:["Perform a table optimization operation","Perform a table repair operation","Perform a table check operation","Perform a table analysis operation"],
+    answer:[1],
+    expl:"<strong>REPAIR TABLE</strong> fixes corrupted MyISAM tables after a crash, restoring both structure and data integrity."
+  },
+  {
+    id:6,
+    text:"James works as an Administrator for Softech Inc. The company has a SQL Server 2005 computer named SQL1. The company has six departments; Accounting, Sales, Marketing, Manufacturing, Production, and Research. The user accounts of each department are located in a domain group named after the department. James wants to create a separate database on SQL1 for each department. Users in each department must be able to read and update data in their respective database. No user must be able to access the database belonging to another department. What should James do to accomplish the task?",
+    type:"single",
+    choices:[
+      "Create a Windows Authentication login for each domain group; configure logins as database users for the appropriate database; add each user to the db_datareader and db_datawriter roles",
+      "Create a Windows Authentication login for each domain user; configure logins as database users for the appropriate database; add each user to the db_datareader and db_datawriter roles",
+      "Create a Windows Authentication login for each domain user; configure logins as database users for the appropriate database; add each user to the db_ddladmin database role",
+      "Create a Windows Authentication login for each domain group; configure logins as database users for the appropriate database; add each user to the db_ddladmin database role"
+    ],
+    answer:[0],
+    expl:"Creating logins per <strong>domain group</strong> (not individual user) and assigning <strong>db_datareader and db_datawriter</strong> roles grants read/write access without DDL privileges."
+  },
+  {
+    id:7,
+    text:"Which of the following is the process of creating a design for the database that will support the enterprise's operations and objectives for the required database system?",
+    type:"single",
+    choices:["Identifying relationships between objects","Database planning","Database design","Application design"],
+    answer:[2],
+    expl:"<strong>Database design</strong> is the process of creating a structured schema that supports an enterprise's operations and objectives."
+  },
+  {
+    id:8,
+    text:"You are the database administrator for a MySQL database. The database server is installed on a Unix system. The time zone files for the system are located at /usr/share/zoneinfo. You need to ensure that the system and MySQL time zones are based on the same information. Which of the following statements will you use to accomplish the task?",
+    type:"single",
+    choices:[
+      "shell> /usr/share/zoneinfo mysql_tzinfo_to_sql | mysql -u root mysql",
+      "shell> mysql_tz_to_sql /usr/share/zoneinfo | mysql -u root mysql",
+      "shell> mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql",
+      "shell> /usr/share/zoneinfo mysql_tz_to_sql | mysql -u root mysql"
+    ],
+    answer:[2],
+    expl:"<strong>mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql</strong> converts Unix timezone files into SQL and loads them into MySQL's time zone tables."
+  },
+  {
+    id:9,
+    text:"What is the ideal time to back up dynamic log files?",
+    type:"single",
+    choices:["When the server is running","When the server is shut down","You can back up dynamic log files any time","When the server is stopped"],
+    answer:[2],
+    expl:"Dynamic log files can be backed up <strong>any time</strong> — they support online backup while the server is running because they are continuously written."
+  },
+  {
+    id:10,
+    text:"Mark works as a Database Designer for Reon Inc. He is assigned the task to create a database for the company. He issues the following query:\n\nCREATE DATABASE '24342'\n\nWhat will be the output of the query?",
+    type:"single",
+    choices:[
+      "A database will be created",
+      "An error will be generated stating that a database name must begin with an alphabet and all the alphabets should be in uppercase",
+      "An error will be generated stating that a database name should be a combination of numerals and alphabets",
+      "An error will be generated stating that a database name must begin with an alphabet"
+    ],
+    answer:[3],
+    expl:"A database name starting with only digits (like '24342') is invalid. MySQL requires the name to <strong>begin with an alphabet</strong>."
+  },
+  {
+    id:11,
+    text:"Which of the following commands cannot be rolled back? Each correct answer represents a complete solution. (Choose two.)",
+    type:"multi",
+    choices:["UPDATE","TRUNCATE","COMMIT","DELETE"],
+    answer:[1,2],
+    expl:"<strong>TRUNCATE</strong> is a DDL command and implicitly commits — it cannot be rolled back. <strong>COMMIT</strong> permanently saves transaction changes and is irreversible."
+  },
+  {
+    id:12,
+    text:"Which of the following are the types of prototyping strategies? Each correct answer represents a complete solution. (Choose two.)",
+    type:"multi",
+    choices:["Physical prototyping","Evolutionary prototyping","Requirements prototyping","Revolutionary prototyping"],
+    answer:[1,2],
+    expl:"The two types are <strong>Evolutionary prototyping</strong> (continuously refining a working model) and <strong>Requirements prototyping</strong> (built to clarify requirements, then discarded)."
+  },
+  {
+    id:13,
+    text:"Which of the following DML SQL statements support usage of correlated sub-queries? Each correct answer represents a complete solution. (Choose all that apply.)",
+    type:"multi",
+    choices:["SELECT","INSERT","UPDATE","DELETE"],
+    answer:[0,1,2,3],
+    expl:"Correlated subqueries are supported in <strong>SELECT, INSERT, UPDATE, and DELETE</strong> — all four DML statements."
+  },
+  {
+    id:14,
+    text:"What is the relationship between the foreign key and primary key? Each correct answer represents a complete solution. (Choose all that apply.)",
+    type:"multi",
+    choices:[
+      "A foreign key and a primary key create a link between two entities",
+      "There is no relationship between a primary key and a foreign key",
+      "A foreign key ties attribute(s) of an entity to the primary key of another entity, for the purpose of creating a dependency",
+      "A foreign key constraint works in conjunction with a primary key constraint to enforce referential integrity among related entities"
+    ],
+    answer:[0,2,3],
+    expl:"A foreign key (A) creates a link between entities, (C) ties attributes to another entity's primary key, and (D) enforces referential integrity together with the primary key constraint."
+  },
+  {
+    id:15,
+    text:"Remo works as a Database Designer for Tech Inc. He wants to create a table named Product. He issues the following query:\n\nCREATE Product (\n  ProductID Char (10) NOT NULL,\n  OrderID Char (10) NULL\n  ProductName Varchar NOT NULL,\n  Primary key (OrderID, ProductID))\n\nWhat are the errors in the above query? Each correct answer represents a complete solution. (Choose two.)",
+    type:"multi",
+    choices:[
+      "An attribute declared as a primary key cannot contain NULL values",
+      "Each attribute should be defined as a primary key separately",
+      "A table cannot have two primary keys",
+      "ProductName is declared as Varchar without specifying the width of the column"
+    ],
+    answer:[0,3],
+    expl:"Two errors: (A) <strong>OrderID is NULL but used in Primary Key</strong> — PK columns must be NOT NULL; (D) <strong>Varchar requires a width</strong> specification, e.g., Varchar(50)."
+  },
+  {
+    id:16,
+    text:"Which of the following steps in database planning is used to record an object so that it is represented visually in the system?",
+    type:"single",
+    choices:["Identifying the relationships between objects","Gathering information","Object identification","Object modeling"],
+    answer:[3],
+    expl:"<strong>Object modeling</strong> is the step that visually represents objects in the system using diagrams such as ER diagrams."
+  },
+  {
+    id:17,
+    text:"You are the database administrator for a MySQL database server. The network contains new and old (pre-4.1) clients. Some users receive the error: \"ERROR 1251: The client does not support authentication protocol requested by the server.\" You do not want to upgrade any client or server right now, and want to enable all clients to connect to the new server successfully. Which of the following steps will you take?",
+    type:"single",
+    choices:[
+      "Run the server with the –secure-auth option",
+      "Run the server with the –old-password option",
+      "Run the server with the –allow-old option",
+      "Run the server with the –enable-old option"
+    ],
+    answer:[1],
+    expl:"<strong>--old-password</strong> makes the server use the older pre-4.1 password hashing algorithm, allowing old clients to authenticate without upgrading."
+  },
+  {
+    id:18,
+    text:"In addition to taking backups of your databases, you should also backup other files. Which of these files store updates that have been made after the backup was made?",
+    type:"single",
+    choices:["Binary log files","My.ini","My.cnf","Master.info"],
+    answer:[0],
+    expl:"<strong>Binary log files</strong> record all changes made to the database after the last backup, enabling point-in-time recovery."
+  },
+  {
+    id:19,
+    text:"Which of the following is a building working model of a database system?",
+    type:"single",
+    choices:["Prototyping","Bottom-up approach","Conceptual database design","Top-down approach"],
+    answer:[0],
+    expl:"<strong>Prototyping</strong> is the process of building a working model of a database system to test feasibility and gather user feedback."
+  },
+  {
+    id:20,
+    text:"Which of the following scripts is used to convert Unix-type zone files into SQL statements, and loads the time zone tables in a mysql database?",
+    type:"single",
+    choices:["mysql_time_to_sql","mysql_tzinfo_to_sql","mysql_tz_to_sql","mysql_timezone_to_sql"],
+    answer:[1],
+    expl:"<strong>mysql_tzinfo_to_sql</strong> converts Unix timezone files into SQL INSERT statements for MySQL's time zone tables."
+  },
+  {
+    id:21,
+    text:"You work as a Database Designer for Tritech Inc. You design an artificial key EmpID in the Info table to serve as a primary key. Which of the following factors lead you to define an artificial key for use as a primary key? Each correct answer represents a part of the solution. (Choose all that apply.)",
+    type:"multi",
+    choices:[
+      "The value of the primary key must be unique",
+      "The value of the primary key must be persistent",
+      "The value of the primary key cannot be NULL",
+      "The natural key contains highly sensitive data"
+    ],
+    answer:[0,1,2,3],
+    expl:"All four factors justify using an artificial key: uniqueness (A), persistence (B), non-null requirement (C), and avoiding sensitive natural data in the primary key (D)."
+  },
+  {
+    id:22,
+    text:"You work as a Database Administrator for DataOneWorld Inc. Management instructs you to remove an object from the relational database management system. Which of the following statements will you use to accomplish the task?",
+    type:"single",
+    choices:["CREATE","SELECT","ALTER","DROP"],
+    answer:[3],
+    expl:"<strong>DROP</strong> is the DDL statement used to remove database objects such as tables, views, and indexes from the RDBMS."
+  },
+  {
+    id:23,
+    text:"You work as a Database Administrator for InfoTech Inc. The company has a database and they want you to create a design for a database that will support the enterprise's operations and objectives. Which of the following will you use to accomplish the task?",
+    type:"single",
+    choices:["Requirements collection and analysis","Database planning","Database design","Application design"],
+    answer:[2],
+    expl:"<strong>Database design</strong> involves creating a structured schema that supports enterprise operations and objectives."
+  },
+  {
+    id:24,
+    text:"You work as the Database Administrator for www.company.com. You suspect a user is executing unauthorized statements through stored procedures that use SQL variant type parameters and ad hoc queries. You are required to stop the unauthorized changes while having least impact on the stored procedures that are in use, using the least administrative effort. What should you do?",
+    type:"single",
+    choices:[
+      "The input parameters should be parsed to watch for and block any input including single quotes",
+      "The stored procedure should be customized to use type-specific and length-restricted parameters",
+      "The stored procedures used for the table should be replaced with ad hoc queries",
+      "All data handling activity on the table should be audited and recorded"
+    ],
+    answer:[1],
+    expl:"Using <strong>type-specific and length-restricted parameters</strong> in stored procedures prevents SQL injection with minimal impact on existing procedures."
+  },
+  {
+    id:25,
+    text:"Which of the following enables a user to use generic methods to access a database and to focus on the coding rather than the syntax for a specific database API?",
+    type:"single",
+    choices:["Abstraction","Database security","Authentication","Native auditing"],
+    answer:[0],
+    expl:"<strong>Abstraction</strong> hides database-specific implementation details and allows developers to use generic methods instead of API-specific syntax."
+  },
+  {
+    id:26,
+    text:"Consider the case of a distance education university. The university has many regional centers across the country. Each regional center has a head known as regional manager. Each regional center has allotted more than one study center in its region. What is the relationship between regional center and study center?",
+    type:"single",
+    choices:["Many-to-many","There is no relationship","One-to-one","One-to-many"],
+    answer:[3],
+    expl:"<strong>One-to-many</strong>: one regional center has many study centers, but each study center belongs to only one regional center."
+  },
+  {
+    id:27,
+    text:"Suzanne works as a Database Designer for DataOneWorld Inc. She is assigned the task of decomposing the components of a database, but she has to ensure that all the components are decomposed to only some extent. Which of the following approaches will she use?",
+    type:"single",
+    choices:["Inside-out approach","Mixed approach","Top-down approach","Bottom-up approach"],
+    answer:[1],
+    expl:"The <strong>Mixed approach</strong> combines top-down and bottom-up techniques, decomposing components only to a certain extent."
+  },
+  {
+    id:28,
+    text:"Which of the following is used to give a default value to a column if the value for that column is unknown?",
+    type:"single",
+    choices:["DEFAULT constraint","Transaction","Concurrency","Nested transaction"],
+    answer:[0],
+    expl:"The <strong>DEFAULT constraint</strong> automatically assigns a predefined value to a column when no value is provided during INSERT."
+  },
+  {
+    id:29,
+    text:"Which of the following is a design of the user interface and the application programs that use and process the database?",
+    type:"single",
+    choices:["Object Modeling","Database Design","Application Design","Database Planning"],
+    answer:[2],
+    expl:"<strong>Application Design</strong> covers the design of user interfaces and the application programs that interact with the database."
+  },
+  {
+    id:30,
+    text:"Mark works as a Database Administrator for DataOneWorld Inc. Management instructs him to provide an additional security layer to the database to prevent unauthorized viewing of data with the help of an algorithm called cipher. Which of the following will help him to accomplish the task?",
+    type:"single",
+    choices:["Authentication","Encryption","Native auditing","Abstraction"],
+    answer:[1],
+    expl:"<strong>Encryption</strong> uses cipher algorithms to encode data, making it unreadable to unauthorized users even if they gain database access."
+  },
+  {
+    id:31,
+    text:"Which of the following values cannot be stored in a character column defined as the primary key of a table?",
+    type:"single",
+    choices:["'0'","'null'","null","\"\""],
+    answer:[2],
+    expl:"A <strong>null</strong> (actual NULL value, not the string 'null') cannot be stored in a PRIMARY KEY column — primary keys must be non-null and unique."
+  },
+  {
+    id:32,
+    text:"Which of the following statements about external tables is true?",
+    type:"single",
+    choices:[
+      "They can have indexes",
+      "They cannot be used in joins, views, and subqueries",
+      "They cannot be written to with DML commands",
+      "They can have constraints or triggers"
+    ],
+    answer:[2],
+    expl:"External tables are <strong>read-only</strong> — they cannot be written to with DML commands (INSERT, UPDATE, DELETE). They also cannot have indexes, constraints, or triggers."
+  },
+  {
+    id:33,
+    text:"Which of the following can be used to populate a table? Each correct answer represents a complete solution. (Choose all that apply.)",
+    type:"multi",
+    choices:["MERGE statement","Data Pump","INSERT statement","SQL*Loader"],
+    answer:[0,1,2,3],
+    expl:"All four can populate tables: <strong>MERGE</strong> (upsert), <strong>Data Pump</strong> (Oracle import tool), <strong>INSERT</strong> (standard SQL), and <strong>SQL*Loader</strong> (Oracle bulk loading utility)."
+  },
+  {
+    id:34,
+    text:"You are a Database Administrator of MySQL database. Your server crashed. You need to check the integrity of various tables and issue the CHECK TABLE command. For which of the following tables will this command work? Each correct answer represents a complete solution. (Choose two.)",
+    type:"multi",
+    choices:["FEDERATED","MyISAM","InnoDB","MERGE"],
+    answer:[1,2],
+    expl:"The <strong>CHECK TABLE</strong> command works on <strong>MyISAM</strong> and <strong>InnoDB</strong> tables to verify integrity after a server crash."
+  },
+  {
+    id:35,
+    text:"Which of the following are the main approaches in the database design? Each correct answer represents a complete solution. (Choose three.)",
+    type:"multi",
+    choices:["Inside-out approach","Middle approach","Top-down approach","Bottom-up approach"],
+    answer:[0,2,3],
+    expl:"The three main database design approaches are <strong>Inside-out</strong> (starting from core entities), <strong>Top-down</strong> (high-level to detail), and <strong>Bottom-up</strong> (detail to high-level)."
+  },
+  {
+    id:36,
+    text:"Your Company is designing a database for a stock exchange. One of the databases will contain highly sensitive data. Although high processing speed is a prime requirement, security of the data will take priority. It needs to be ensured that even if unauthorized access to the database is obtained, the rogue user is unable to read the data. Which of the following protection techniques will you suggest?",
+    type:"single",
+    choices:["Native auditing","Authentication","Encryption","Integrity controls"],
+    answer:[2],
+    expl:"<strong>Encryption</strong> ensures that even if data is accessed without authorization, it cannot be read without the decryption key."
+  },
+  {
+    id:37,
+    text:"Which of the following database terms is described in the statement below?\n\nIt prevents the current database operation from reading or writing a data item while the data item is being accessed by another operation.",
+    type:"single",
+    choices:["Deadlock","Encryption","Lock","Constraint"],
+    answer:[2],
+    expl:"A <strong>Lock</strong> prevents concurrent access to a data item, ensuring only one operation can read or write it at a time."
+  },
+  {
+    id:38,
+    text:"You manage a database named Customers, which includes a table named Orders. The Orders table is frequently queried, but only orders with a sales total of more than $1000.00 are required in the query. You want to create an index to speed up these types of queries at the same time, ensuring the index is as small as possible. What type of index should you use?",
+    type:"single",
+    choices:["Filtered","XML","Non-clustered","Clustered"],
+    answer:[0],
+    expl:"A <strong>Filtered index</strong> includes only rows meeting a specific condition (sales > $1000), making it smaller and more efficient than a full index."
+  },
+  {
+    id:39,
+    text:"John works as a Database Administrator for DataOneWorld Inc. The company has a SQL Server database. John wants to insert records in a table where the database is structured in a fixed format. Which of the following data models will he use to accomplish the task?",
+    type:"single",
+    choices:["Object relational data model","Network data model","Entity-Relationship Model","Relational model"],
+    answer:[3],
+    expl:"The <strong>Relational model</strong> organizes data in tables with fixed-format rows and columns, making it ideal for structured data storage."
+  },
+  {
+    id:40,
+    text:"Consider the case of a fruit juice company. The Database Designer creates a table named Production with the following code:\n\n1. CREATE Table Production\n2. (Fruit_type VarChar,\n3. Fruit_name Char(20),\n4. Quantity Int(3))\n\nWhich of the above-mentioned lines has an error?",
+    type:"single",
+    choices:["Line 3","Line 2","Line 4","Line 1"],
+    answer:[1],
+    expl:"<strong>Line 2</strong> has the error: <code>VarChar</code> without specifying a maximum length (e.g., VarChar(50)) is invalid syntax."
+  },
+  {
+    id:41,
+    text:"Which of the following steps in database planning helps to determine the requirements of the database through interviewing?",
+    type:"single",
+    choices:["Identifying the objects","Identifying the relationship between objects","Identifying the type of information for each object","Modeling the object","Gathering information"],
+    answer:[4],
+    expl:"<strong>Gathering information</strong> involves interviewing stakeholders, observing current systems, and collecting data to define database requirements."
+  },
+  {
+    id:42,
+    text:"Which of the following provides reliable units of work that allow correct recovery from failures and keeps a database consistent even in cases of system failure?",
+    type:"single",
+    choices:["Concurrency control","Database transaction","Two-phase commit","Database security"],
+    answer:[1],
+    expl:"A <strong>Database transaction</strong> is an atomic unit of work following ACID properties, ensuring consistency and proper recovery."
+  },
+  {
+    id:43,
+    text:"You work as a Database Designer for DataOneWorld Inc. You are assigned the task of creating a data model of an enterprise based on a specific data model. The model to be created should be independent of a particular DBMS. Which of the following database designs will help you accomplish the task?",
+    type:"single",
+    choices:["Application design","Logical database design","Physical database design","Conceptual database design"],
+    answer:[3],
+    expl:"<strong>Conceptual database design</strong> creates a DBMS-independent enterprise model using constructs like ER diagrams."
+  },
+  {
+    id:44,
+    text:"JDBC API 2.0 defines five levels of transaction isolation for database concurrency control. Which of the following is the lowest level of transaction isolation?",
+    type:"single",
+    choices:["TRANSACTION_READ_UNCOMMITTED","TRANSACTION_REPEATABLE_READ","TRANSACTION_READ_COMMITTED","TRANSACTION_SERIALIZABLE","TRANSACTION_NONE"],
+    answer:[4],
+    expl:"<strong>TRANSACTION_NONE</strong> is the lowest level — it indicates transactions are not supported. Among meaningful levels, TRANSACTION_READ_UNCOMMITTED is the lowest isolation."
+  },
+  {
+    id:45,
+    text:"You are a database developer for a database named Customers hosted on a SQL Server 2008 server. Recently, several customers were deleted from the Customers database. To ensure this is not repeated in future, you have decided to create a DML trigger to prevent it. What code will create the trigger to meet your goals? Each correct answer represents a complete solution. (Choose all that apply.)",
+    type:"multi",
+    choices:[
+      "BEFORE DELETE trigger with RAISERROR and ROLLBACK TRANSACTION",
+      "AFTER DELETE trigger with RAISERROR and ROLLBACK TRANSACTION",
+      "AFTER DELETE with IF COUNT(*) FROM DELETED > 1 check then RAISERROR and ROLLBACK",
+      "AFTER DELETE with IF COUNT(*) FROM DELETED > 0 check then RAISERROR and ROLLBACK"
+    ],
+    answer:[1,3],
+    expl:"SQL Server supports <strong>AFTER DELETE</strong> triggers (not BEFORE DELETE). Option B (direct RAISERROR after delete) and Option D (check DELETED table > 0) are both valid approaches."
+  },
+  {
+    id:46,
+    text:"Smith works as a Database Administrator for DWorlds Inc. The management instructs him to plan a database where identifying the key objects or entities for database management is important. Which of the following database planning steps will help him to accomplish the task?",
+    type:"single",
+    choices:["Identifying the relationships between objects","Gathering information","Object identification","Object modeling"],
+    answer:[2],
+    expl:"<strong>Object identification</strong> is the database planning step that focuses on finding and naming the key entities and objects in the system."
+  },
+  {
+    id:47,
+    text:"John works as a Database Administrator for Bluewell Inc. The company has a SQL Server database. A table in the database has a candidate key and an attribute that is not a constituent of the candidate key. The non-key attribute depends upon the whole of the candidate key rather than just a part of it. Which of the following normal forms is represented in the scenario?",
+    type:"single",
+    choices:["4NF","1NF","2NF","3NF"],
+    answer:[2],
+    expl:"<strong>2NF (Second Normal Form)</strong> requires that all non-key attributes depend on the WHOLE candidate key — not just part of it. This scenario describes 2NF compliance."
+  },
+  {
+    id:48,
+    text:"Which of the following commands can be used to change the authorization type in DB2 9? Each correct answer represents a complete solution. (Choose all that apply.)",
+    type:"multi",
+    choices:["UPDATE DBM CFG","RESET DATABASE CONFIGURATION","UPDATE DATABASE CONFIGURATION","SET AUTHORIZATION"],
+    answer:[0,2],
+    expl:"<strong>UPDATE DBM CFG</strong> (Database Manager Configuration) and <strong>UPDATE DATABASE CONFIGURATION</strong> are valid DB2 commands to modify authorization settings."
+  },
+  {
+    id:49,
+    text:"Which of the following are DML commands? Each correct answer represents a complete solution. (Choose all that apply.)",
+    type:"multi",
+    choices:["SELECT INTO","INSERT","UPDATE","SELECT","DELETE","ALTER"],
+    answer:[1,2,3,4],
+    expl:"DML commands are <strong>INSERT</strong>, <strong>UPDATE</strong>, <strong>SELECT</strong>, and <strong>DELETE</strong>. ALTER is DDL. SELECT INTO is a DDL/DML hybrid depending on the database."
+  },
+  {
+    id:50,
+    text:"Which of the following statements is true about referential integrity?",
+    type:"single",
+    choices:[
+      "It checks that no record in a child table can exist if its corresponding record is not available in the parent table",
+      "It distinguishes between null values and zero entries",
+      "It checks that no component of a primary key can have a null value and no duplicate entries can exist",
+      "It checks that the value of a primary key must be consistent throughout the life of an instance"
+    ],
+    answer:[0],
+    expl:"<strong>Referential integrity</strong> ensures every foreign key value in a child table references an existing record in the parent table."
+  },
+  {
+    id:51,
+    text:"You are the database administrator of a MySQL server that runs on a Windows server. All clients are local clients. For security, you want to disable connections from the remote clients. Which of the following steps will you take to accomplish the task?",
+    type:"single",
+    choices:[
+      "Start the server with the –secure-auth option",
+      "Start the server with the –shared-memory option",
+      "Start the server with the –disable-networking option",
+      "Start the server with the –skip-networking option"
+    ],
+    answer:[3],
+    expl:"<strong>--skip-networking</strong> disables all TCP/IP connections, allowing only local socket connections — effectively blocking all remote clients."
+  },
+  {
+    id:52,
+    text:"You manage a large database named Sales. The Sales database contains a table named OrderDetails, which is a heavily transacted table with frequent inserts. Indexes in the table often become fragmented due to excessive page splitting. You want to minimize the amount of fragmentation due to page splits. What should you do?",
+    type:"single",
+    choices:[
+      "Update the statistics on the indexes",
+      "Change the fillfactor for the indexes to 0",
+      "Change the fillfactor for the indexes to 100",
+      "Change the fillfactor for the indexes to 60"
+    ],
+    answer:[3],
+    expl:"A <strong>fillfactor of 60</strong> leaves 40% of each index page free, reducing page splits caused by frequent inserts and minimizing fragmentation."
+  },
+  {
+    id:53,
+    text:"You work as a Database Administrator for Bell Ceramics Inc. An employee has fired a query, including a DML statement such as INSERT, against a table named Sales. You notice that the DML statement has not executed. What will you do to resolve the issue? Each correct answer represents a complete solution. (Choose two.)",
+    type:"multi",
+    choices:[
+      "Provide redundant network paths from the client computer to the server along with additional listener connections on the Oracle server",
+      "Clean up all the uncommitted transactions on the Sales table",
+      "Add more space to the tablespace and increase the user's quota on the tablespace",
+      "Provide an appropriate privilege or create views on the Sales table, and grant privileges on the view"
+    ],
+    answer:[2,3],
+    expl:"The INSERT likely failed due to (C) <strong>insufficient tablespace/quota</strong> or (D) <strong>missing INSERT privileges</strong> on the Sales table. Both are common causes."
+  },
+  {
+    id:54,
+    text:"Which of the following is the process of extracting trails on a regular basis so that they can be transferred to a designated security system where the database administrators do not have access?",
+    type:"single",
+    choices:["Abstraction","Database security","Native auditing","Encryption"],
+    answer:[2],
+    expl:"<strong>Native auditing</strong> involves extracting database audit trails and transferring them to a secure system that DBAs cannot access."
+  },
+  {
+    id:55,
+    text:"Linda works as a Database Designer for Lion Inc. The database has a table named Author, which has a composite key (AuthorID and TitleID). Royalty and LiteraryAgent are the other attributes. The functional dependencies are: AuthorID + TitleID → Royalty and AuthorID → LiteraryAgent. Which of the following is true about this table?",
+    type:"single",
+    choices:["It violates 1NF","It violates 4NF","It violates 2NF","There is no violation"],
+    answer:[2],
+    expl:"This violates <strong>2NF</strong>: LiteraryAgent depends only on AuthorID (a partial dependency on the composite key), not on the full composite key AuthorID + TitleID."
+  },
+  {
+    id:56,
+    text:"Which of the following is a management activity that allows the stages of the database application to be realized as efficiently and effectively as possible?",
+    type:"single",
+    choices:["Identifying information for objects","Database planning","Object identification","Requirements collection and analysis"],
+    answer:[1],
+    expl:"<strong>Database planning</strong> is the management activity that coordinates all stages of database application development efficiently."
+  },
+  {
+    id:57,
+    text:"You want to recover one or more tablespaces to a point in time older than the rest of the database. Which of the following are the recovery situations in which tablespace Point-in-Time Recovery (TSPITR) should be used? (Choose all that apply.)",
+    type:"multi",
+    choices:[
+      "To recover a table that has become logically corrupted",
+      "To recover a tablespace on a very large database",
+      "To recover a tablespace that contains rollback segments",
+      "To recover a DML statement that has affected only a subset of the database"
+    ],
+    answer:[0,3],
+    expl:"TSPITR is used for (A) <strong>logically corrupted tables</strong> and (D) <strong>DML errors affecting a subset</strong> of the database — without restoring the entire database."
+  },
+  {
+    id:58,
+    text:"You work as a database developer for www.company.com. The database includes a table named Employees. You want to ensure that anytime any data in the Employees table is modified with an UPDATE statement, they are recorded in a table named EmployeeChanges. The EmployeeChanges table includes columns to record what the change was, who made the change, and when. What should you create?",
+    type:"single",
+    choices:[
+      "A DDL trigger that queries the inserted table",
+      "A DML trigger that queries the inserted table",
+      "A DDL trigger that queries the updated table",
+      "A DML trigger that queries the updated table"
+    ],
+    answer:[1],
+    expl:"A <strong>DML AFTER UPDATE trigger</strong> fires on UPDATE. It queries the <strong>inserted</strong> virtual table to get new values (and deleted for old values)."
+  },
+  {
+    id:59,
+    text:"Which of the following statements about rebuilding an index is true?",
+    type:"single",
+    choices:[
+      "The NOLOGGING and ONLINE keywords are always used together",
+      "Without the ONLINE keyword the index is locked for the SELECT operation",
+      "The NOLOGGING and ONLINE keywords can never be used together",
+      "Without the ONLINE keyword the index is locked for any DML operation"
+    ],
+    answer:[3],
+    expl:"Without the <strong>ONLINE</strong> keyword, index rebuilding locks the table for all <strong>DML operations</strong> (INSERT, UPDATE, DELETE), blocking data modifications."
+  },
+  {
+    id:60,
+    text:"Mark works as a Database Administrator for VCEplus Inc. The company has a SQL Server database. Management instructs him to ensure that no inconsistent data is entered in the database. Which of the following will help him to accomplish the task?",
+    type:"single",
+    choices:["Referential integrity","Abstraction","Native auditing","Authentication","Encryption"],
+    answer:[0],
+    expl:"<strong>Referential integrity</strong> enforces rules that ensure data consistency by preventing invalid relationships between tables."
+  },
+  {
+    id:61,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"The <u>UNION</u> keyword combines the results of two queries and returns only rows that appear in both result sets.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["No change is needed","INTERSECT","ALL","JOIN"],
+    answer:[1],
+    expl:"<strong>INTERSECT</strong> returns only rows appearing in BOTH result sets. UNION returns all rows from both queries combined (minus duplicates)."
+  },
+  {
+    id:62,
+    text:"You have a database that contains 10 terabytes of data. You need to back up the database every two hours. Which type of backup should you use?",
+    type:"single",
+    choices:["full","partial","incremental","archive"],
+    answer:[2],
+    expl:"<strong>Incremental backup</strong> backs up only data changed since the last backup, making it fast and practical for frequent backups of very large databases."
+  },
+  {
+    id:63,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"A relational database management system employs the concept of an <u>attribute</u> to ensure that data entered into a field in a column is valid.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["a primary key","a constraint","an index","No change is needed"],
+    answer:[1],
+    expl:"A <strong>constraint</strong> ensures data validity in a column (e.g., NOT NULL, CHECK, UNIQUE). An attribute is simply a column — it does not enforce validity on its own."
+  },
+  {
+    id:64,
+    text:"You are structuring a table in a relational database. For each of the following statements, select Yes or No:\n\n(A) Each value in a field in a table must be unique.\n(B) Each row in a table must be unique.\n(C) Each column name in a table must be unique.\n\nWhich answer correctly identifies all three?",
+    type:"single",
+    choices:[
+      "A: Yes, B: Yes, C: Yes",
+      "A: No, B: Yes, C: Yes",
+      "A: Yes, B: No, C: Yes",
+      "A: No, B: No, C: Yes"
+    ],
+    answer:[1],
+    expl:"(A) <strong>No</strong> — field values don't need to be unique unless constrained. (B) <strong>Yes</strong> — each row must be uniquely identifiable (enforced by PK). (C) <strong>Yes</strong> — column names within a table must be unique."
+  },
+  {
+    id:65,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"A <u>key</u> defines the amount of storage space that is allocated to a value in a column.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["No change is needed","validator","format","data type"],
+    answer:[3],
+    expl:"A <strong>data type</strong> defines how much storage space is allocated to column values. A key identifies rows — it does not define storage space."
+  },
+  {
+    id:66,
+    text:"You need to create a view to filter rows of data from an underlying table. Which type of clause must be included in the CREATE VIEW statement?",
+    type:"single",
+    choices:["FILTER","WHERE","JOIN","CONSTRAINT"],
+    answer:[1],
+    expl:"The <strong>WHERE</strong> clause filters which rows from the base table are included in the view."
+  },
+  {
+    id:67,
+    text:"For each of the following statements, select the appropriate answer:\n\n(A) StateID is a/an [answer choice] in the State table.\n(B) StateID is a/an [answer choice] in the Address table.\n\nOptions: 1-index, 2-union, 3-foreign key, 4-primary key",
+    type:"single",
+    choices:[
+      "A: primary key (4); B: foreign key (3)",
+      "A: foreign key (3); B: primary key (4)",
+      "A: index (1); B: union (2)",
+      "A: primary key (4); B: primary key (4)"
+    ],
+    answer:[0],
+    expl:"StateID is the <strong>primary key</strong> in the State table (uniquely identifies each state) and a <strong>foreign key</strong> in the Address table (references the State table)."
+  },
+  {
+    id:68,
+    text:"For each of the following statements, select Yes if the statement is true. Otherwise, select No.\n\n(A) A SQL Server Login can use Windows Authentication.\n(B) A SQL Server Role provides permissions at the server level.\n(C) A SQL Server Login is granted permission to database views only.",
+    type:"single",
+    choices:[
+      "A: Yes, B: Yes, C: Yes",
+      "A: Yes, B: Yes, C: No",
+      "A: No, B: Yes, C: No",
+      "A: Yes, B: No, C: No"
+    ],
+    answer:[1],
+    expl:"(A) <strong>Yes</strong>: SQL Server supports Windows Authentication. (B) <strong>Yes</strong>: Server roles grant server-level permissions. (C) <strong>No</strong>: Logins can get permissions to tables, views, stored procedures, and more."
+  },
+  {
+    id:69,
+    text:"For each of the following statements, select Yes if the statement is true. Otherwise, select No.\n\n(A) You can delete data by using a stored procedure.\n(B) A function must have a return value.\n(C) A stored procedure must have a return value.",
+    type:"single",
+    choices:[
+      "A: Yes, B: Yes, C: Yes",
+      "A: Yes, B: Yes, C: No",
+      "A: No, B: Yes, C: No",
+      "A: Yes, B: No, C: No"
+    ],
+    answer:[1],
+    expl:"(A) <strong>Yes</strong>: Stored procedures can contain DELETE statements. (B) <strong>Yes</strong>: Functions must return a value. (C) <strong>No</strong>: Stored procedures do not need to return a value."
+  },
+  {
+    id:70,
+    text:"Using the simple recovery model for database backups:\n\n(A) ...provides [answer choice] work-loss exposure than the full recovery model.\n(B) ...provides [answer choice] log file backups than the full recovery model.\n\nOptions: 1-less, 2-more, 3-the same",
+    type:"single",
+    choices:[
+      "A: more (2); B: fewer — less (1)",
+      "A: less (1); B: more (2)",
+      "A: the same (3); B: the same (3)",
+      "A: more (2); B: more (2)"
+    ],
+    answer:[0],
+    expl:"Simple recovery provides <strong>more work-loss exposure</strong> (can only restore to last backup, losing all changes since) and <strong>fewer log file backups</strong> (transaction log backups are not possible with simple recovery)."
+  },
+  {
+    id:71,
+    text:"Instructions: For each statement, select the appropriate answer choice.\n\nA user with the 'bulkadmin' server role:\n(A) The user can perform [answer choice] actions on data that is on the server.\n(B) The user can perform [answer choice] actions on database objects that are on the server.\n\nOptions: 1-unlimited, 2-read-only, 3-no, 4-configuration",
+    type:"single",
+    choices:[
+      "A: unlimited (1); B: unlimited (1)",
+      "A: read-only (2); B: no (3)",
+      "A: no (3); B: configuration (4)",
+      "A: read-only (2); B: read-only (2)"
+    ],
+    answer:[1],
+    expl:"The <strong>bulkadmin</strong> role only allows bulk INSERT. Users can perform <strong>read-only</strong> actions on data and <strong>no</strong> general actions on database objects beyond bulk operations."
+  },
+  {
+    id:72,
+    text:"You have two database tables. StateID is unique in the State table. AddressID is unique in the Address table. The two tables are related by the StateID column. For each statement, select Yes or No:\n\n(A) Each value in a field in a table must be unique.\n(B) Each row in a table must be unique.\n(C) Each column name in a table must be unique.",
+    type:"single",
+    choices:[
+      "A: No, B: Yes, C: Yes",
+      "A: Yes, B: Yes, C: Yes",
+      "A: No, B: No, C: Yes",
+      "A: Yes, B: No, C: Yes"
+    ],
+    answer:[0],
+    expl:"(A) <strong>No</strong> — field values need not be unique. (B) <strong>Yes</strong> — each row must be uniquely identifiable (enforced by primary key). (C) <strong>Yes</strong> — column names within a table must be unique."
+  },
+  {
+    id:73,
+    text:"For each of the following statements about indexes, select Yes if the statement is true. Otherwise, select No.\n\n(A) A clustered index sorts and stores the data columns of a table or view in order, based on the clustered index key.\n(B) A non-clustered index is defined on a table or view by using a clustered index or heap.\n(C) A unique index ensures that the index key contains no duplicate values.\n(D) A filtered index is a clustered index that is optimized for queries that select a small percentage of rows.",
+    type:"single",
+    choices:[
+      "A: Yes, B: Yes, C: Yes, D: Yes",
+      "A: Yes, B: Yes, C: Yes, D: No",
+      "A: Yes, B: No, C: Yes, D: No",
+      "A: No, B: Yes, C: Yes, D: No"
+    ],
+    answer:[1],
+    expl:"(A) <strong>Yes</strong>: Clustered index physically sorts data. (B) <strong>Yes</strong>: Non-clustered is built on a clustered index or heap. (C) <strong>Yes</strong>: Unique index prevents duplicates. (D) <strong>No</strong>: A filtered index is NON-clustered, not clustered."
+  },
+  {
+    id:74,
+    text:"For each of the following statements, select Yes if the statement is true. Otherwise, select No.\n\n(A) The VARCHAR data type contains only numeric characters.\n(B) The NUMERIC data type contains only numbers that have decimal places.\n(C) The INT data type contains only whole numbers.",
+    type:"single",
+    choices:[
+      "A: No, B: No, C: Yes",
+      "A: Yes, B: Yes, C: Yes",
+      "A: No, B: Yes, C: Yes",
+      "A: Yes, B: No, C: Yes"
+    ],
+    answer:[0],
+    expl:"(A) <strong>No</strong>: VARCHAR stores any characters, not only numeric. (B) <strong>No</strong>: NUMERIC can store both integers and decimals. (C) <strong>Yes</strong>: INT stores only whole numbers."
+  },
+  {
+    id:75,
+    text:"Use the drop-down menus to select the answer choice that completes each statement about indexes:\n\n(A) Adding a [answer choice] on the FlightNumber column physically sorts rows in the table by FlightNumber.\n(B) Adding a [answer choice] on the Airline column retrieves data faster, but will NOT physically sort rows in the table by Airline.\n\nOptions: 1-foreign key, 2-clustered index, 3-non-clustered index",
+    type:"single",
+    choices:[
+      "A: clustered index (2); B: non-clustered index (3)",
+      "A: non-clustered index (3); B: clustered index (2)",
+      "A: foreign key (1); B: clustered index (2)",
+      "A: clustered index (2); B: clustered index (2)"
+    ],
+    answer:[0],
+    expl:"A <strong>clustered index</strong> physically reorders table data. A <strong>non-clustered index</strong> creates a separate lookup structure without changing data order."
+  },
+  {
+    id:76,
+    text:"Use the drop-down menus to select the answer choice that completes each statement about clustered indexes:\n\n(A) A clustered index improves the performance of queries that [answer choice].\n(B) A clustered index improves the performance of queries on columns that [answer choice].\n\nOptions: 1-return large result sets, 2-return a range of values, 3-do not use ORDER BY or GROUP BY, 4-are accessed randomly, 5-are accessed sequentially, 6-are not unique or contain many common values",
+    type:"single",
+    choices:[
+      "A: return a range of values (2); B: are accessed sequentially (5)",
+      "A: return large result sets (1); B: are not unique (6)",
+      "A: do not use ORDER BY (3); B: are accessed randomly (4)",
+      "A: return a range of values (2); B: are accessed randomly (4)"
+    ],
+    answer:[0],
+    expl:"Clustered indexes are best for <strong>range queries</strong> (returning a range of values) and on columns that are <strong>accessed sequentially</strong>."
+  },
+  {
+    id:77,
+    text:"For each of the following statements, select the appropriate answer choice:\n\n(A) The [answer choice] computer is the first line of defense against SQL injections and weak input validation.\n(B) The [answer choice] computer should be formatted with NTFS to protect program, database and log files from unauthorized access.\n\nOptions: 1-client, 2-www.contoso.com (web server), 3-s01.contoso.com (database server)",
+    type:"single",
+    choices:[
+      "A: client (1); B: database server (3)",
+      "A: web server (2); B: database server (3)",
+      "A: client (1); B: web server (2)",
+      "A: database server (3); B: web server (2)"
+    ],
+    answer:[0],
+    expl:"The <strong>client</strong> computer is the first defense against SQL injection (input validation at the source). The <strong>database server</strong> should use NTFS to secure database and log files."
+  },
+  {
+    id:78,
+    text:"For each of the following statements about backups, select Yes if true, No if false:\n\n(A) A full database backup is a copy of all the data in the entire database.\n(B) A transaction log backup backs up all the data in the database.\n(C) A differential backup copies only data that was changed before the last full backup.\n(D) A file or filegroup restore specifies a portion of the database to recover.",
+    type:"single",
+    choices:[
+      "A: Yes, B: No, C: No, D: Yes",
+      "A: Yes, B: Yes, C: No, D: Yes",
+      "A: Yes, B: No, C: Yes, D: Yes",
+      "A: No, B: No, C: No, D: Yes"
+    ],
+    answer:[0],
+    expl:"(A) <strong>Yes</strong>. (B) <strong>No</strong>: Transaction log backup only backs up the transaction log, not all data. (C) <strong>No</strong>: Differential copies data changed AFTER (not before) the last full backup. (D) <strong>Yes</strong>."
+  },
+  {
+    id:79,
+    text:"Your class project requires that you help a charity set up a website. The website collects information about volunteers. Each volunteer record must be uniquely identified. For the Volunteer table, match the code segments:\n\n[Id] Code Segment 1\n[DateOfBirth] Code Segment 2\n[Photo] Code Segment 3\n\nOptions: 1-TIMESTAMP NULL, 2-DATE NULL, 3-IMAGE NULL, 4-XML NULL, 5-INT NOT NULL PRIMARY KEY, 6-INT NOT NULL FOREIGN KEY",
+    type:"single",
+    choices:[
+      "Segment 1: INT NOT NULL PRIMARY KEY (5); Segment 2: DATE NULL (2); Segment 3: IMAGE NULL (3)",
+      "Segment 1: TIMESTAMP NULL (1); Segment 2: XML NULL (4); Segment 3: INT NOT NULL FOREIGN KEY (6)",
+      "Segment 1: INT NOT NULL FOREIGN KEY (6); Segment 2: TIMESTAMP NULL (1); Segment 3: IMAGE NULL (3)",
+      "Segment 1: DATE NULL (2); Segment 2: INT NOT NULL PRIMARY KEY (5); Segment 3: XML NULL (4)"
+    ],
+    answer:[0],
+    expl:"[Id] needs <strong>INT NOT NULL PRIMARY KEY</strong> (unique identifier). [DateOfBirth] needs <strong>DATE NULL</strong> (date field). [Photo] needs <strong>IMAGE NULL</strong> (binary image storage)."
+  },
+  {
+    id:80,
+    text:"You have a database table that stores information about school attendance. Match the CourseName to the StudentName from the data set.\n\n(A) Brad → ?\n(B) Joe → ?\n(C) Susan → ?\n\nOptions: 1-Geography, 2-History, 3-Math, 4-Reading, 5-Science",
+    type:"single",
+    choices:[
+      "Brad: Math (3); Joe: Geography (1); Susan: Reading (4)",
+      "Brad: History (2); Joe: Math (3); Susan: Science (5)",
+      "Brad: Science (5); Joe: History (2); Susan: Math (3)",
+      "Brad: Geography (1); Joe: Science (5); Susan: History (2)"
+    ],
+    answer:[0],
+    expl:"Based on the attendance data in the PDF: <strong>Brad → Math, Joe → Geography, Susan → Reading</strong>."
+  },
+  {
+    id:81,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"<u>Views</u> are database objects that contain all of the data in a database.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["Stored procedures","No change is needed","Queries","Tables"],
+    answer:[3],
+    expl:"<strong>Tables</strong> contain all the data in a database. Views are virtual tables — they don't store raw data themselves."
+  },
+  {
+    id:82,
+    text:"You have two tables named Cars and Color as defined below. The two tables are related by ColorId. You run the following SQL statement:\n\nSELECT * FROM Cars INNER JOIN Color ON Cars.ColorId = Color.ColorId\n\nHow many rows does the SQL statement return?",
+    type:"single",
+    choices:["0","2","6","3"],
+    answer:[1],
+    expl:"An INNER JOIN returns only matching rows. Based on the data in the PDF, <strong>2 rows</strong> match between Cars and Color."
+  },
+  {
+    id:83,
+    text:"You accept an IT internship at a local charity. The charity asks you to keep a record of its volunteers by using a database table named Volunteer. When volunteers ask to be removed from mailing lists, the table must be updated. You need to use a transaction to ensure that the database has data integrity and referential integrity. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option B: BEGIN TRANSACTION; DELETE FROM MailingList WHERE VolunteerID = @id; ROLLBACK",
+      "Option A: BEGIN TRANSACTION; UPDATE Volunteer SET Mailing = 0 WHERE VolunteerID = @id; COMMIT",
+      "Option C: DELETE FROM Volunteer WHERE VolunteerID = @id",
+      "Option D: UPDATE Volunteer SET Mailing = 0 WHERE VolunteerID = @id"
+    ],
+    answer:[1],
+    expl:"<strong>Option A</strong> uses BEGIN TRANSACTION with the update operation and COMMIT — ensuring atomicity, data integrity, and referential integrity."
+  },
+  {
+    id:84,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"Create a query that returns a set of table data by using the <u>UPDATE</u> statement.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["SELECT","INSERT","No change is needed","REPLACE"],
+    answer:[0],
+    expl:"<strong>SELECT</strong> returns a set of table data. UPDATE modifies existing rows — it does not return a result set."
+  },
+  {
+    id:85,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"<u>Truncate</u> is a database term used to describe the process of applying a backup to a damaged or corrupt database.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["Attach","No change is needed","Commit","Restore"],
+    answer:[3],
+    expl:"<strong>Restore</strong> is the process of applying a backup to recover a damaged or corrupt database. Truncate removes all rows from a table."
+  },
+  {
+    id:86,
+    text:"Your class project requires that you help a charity to create a website that registers volunteers. The website must store: Given name, Surname, Telephone number, Email address. You need to recommend a correct way to store the data. What do you recommend?",
+    type:"single",
+    choices:[
+      "Create a view that contains columns named given name, surname, phone number, and email",
+      "Create a table that contains columns named given name, surname, phone number, and email",
+      "Create a view that contains rows named given name, surname, phone number, and email",
+      "Create a table that contains rows named given name, surname, phone number, and email"
+    ],
+    answer:[1],
+    expl:"Data is stored in <strong>tables</strong> (not views) using <strong>columns</strong> for each data field. A table with properly named columns is the correct approach."
+  },
+  {
+    id:87,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"Use the <u>ALLOW SELECT</u> command to give a user permission to read the data in a table.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["GRANT SELECT","LET HEAD","PERMIT READ","No change is needed"],
+    answer:[0],
+    expl:"<strong>GRANT SELECT</strong> is the correct SQL command to give a user read (SELECT) permission on a table."
+  },
+  {
+    id:88,
+    text:"You have a user with the 'diskadmin' server role. For each statement, select the appropriate answer:\n\n(A) The user can perform [answer choice] actions on data that is on the server.\n(B) The user can perform [answer choice] actions on database objects that are on the server.\n\nOptions: 1-no, 2-unlimited, 3-configuration, 4-read-only",
+    type:"single",
+    choices:[
+      "A: no (1); B: configuration (3)",
+      "A: unlimited (2); B: unlimited (2)",
+      "A: configuration (3); B: read-only (4)",
+      "A: read-only (4); B: no (1)"
+    ],
+    answer:[0],
+    expl:"The <strong>diskadmin</strong> role manages only disk files. Users have <strong>no</strong> regular data actions and only <strong>configuration</strong> (disk management) actions on database objects."
+  },
+  {
+    id:89,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"You combine data from three tables into one table. The new table includes redundancy to optimize read performance. The data in the new table has been <u>denormalized</u>.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["No change is needed","Indexed","Normalized","Truncated"],
+    answer:[0],
+    expl:"<strong>No change is needed.</strong> Combining tables with intentional redundancy to improve read performance is the correct definition of <strong>denormalization</strong>."
+  },
+  {
+    id:90,
+    text:"You need to delete a database table. Which data definition language (DDL) keyword should you use?",
+    type:"single",
+    choices:["ALTER","DELETE","DROP","TRUNCATE"],
+    answer:[2],
+    expl:"<strong>DROP</strong> is the DDL keyword that removes the entire table definition and all its data from the database."
+  },
+  {
+    id:91,
+    text:"You need to add rows to a database table. Which Structured Query Language (SQL) keyword should you use?",
+    type:"single",
+    choices:["JOIN","INSERT","UPDATE","CREATE"],
+    answer:[1],
+    expl:"<strong>INSERT</strong> is the DML keyword used to add new rows to a database table."
+  },
+  {
+    id:92,
+    text:"You need to retrieve data from two related database tables based on a column that exists in both tables. Which command should you use in a query?",
+    type:"single",
+    choices:["TRUNCATE","INTERSECT","JOIN","UNION"],
+    answer:[2],
+    expl:"<strong>JOIN</strong> combines rows from two or more tables based on a related column that exists in both tables."
+  },
+  {
+    id:93,
+    text:"You have a database table that contains columns (VolunteerID, GivenName, Surname). You must insert the following record: (3, 'Tia', 'Scott'). Which two SQL statements can you use? (Choose two.)",
+    type:"multi",
+    choices:[
+      "Option B: INSERT INTO Volunteer VALUES (3, 'Tia', 'Scott')",
+      "Option A: INSERT INTO Volunteer (VolunteerID, GivenName, Surname) VALUES (3, 'Tia', 'Scott')",
+      "Option C: INSERT Volunteer SET GivenName='Tia', Surname='Scott'",
+      "Option D: ADD INTO Volunteer VALUES (3, 'Tia', 'Scott')"
+    ],
+    answer:[0,1],
+    expl:"Both <strong>INSERT INTO Volunteer VALUES (...)</strong> (Option B) and <strong>INSERT INTO Volunteer (columns) VALUES (...)</strong> (Option A) are valid SQL INSERT syntax."
+  },
+  {
+    id:94,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"The <u>UNION</u> keyword combines the results of two queries and returns only rows that appear in both result sets.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["No change is needed","ALL","INTERSECT","JOIN"],
+    answer:[2],
+    expl:"<strong>INTERSECT</strong> returns only rows appearing in BOTH result sets. UNION returns all distinct rows combined from both queries."
+  },
+  {
+    id:95,
+    text:"You work at a restaurant and they ask you to help them with a data issue. They provide you with the following recipe data. You need to normalize the data to third normal form. How many tables should you create?",
+    type:"single",
+    choices:["2","1","3","4"],
+    answer:[2],
+    expl:"Normalizing recipe data to <strong>3NF</strong> typically requires <strong>3 tables</strong>: one for recipes, one for ingredients, and a junction table for the recipe-ingredient relationships."
+  },
+  {
+    id:96,
+    text:"You accept an IT internship at a local charity. The charity has two tables named Chapter and Language. You create a third table named ChapterLanguage to relate them. You need to select columns from the Chapter and Language tables to create a composite primary key for ChapterLanguage. Which two columns should you select? (Choose two.)",
+    type:"multi",
+    choices:["Country","ChapterId","LanguageId","City","Region","LanguageName"],
+    answer:[1,2],
+    expl:"The composite primary key of ChapterLanguage consists of <strong>ChapterId</strong> (from Chapter table) and <strong>LanguageId</strong> (from Language table)."
+  },
+  {
+    id:97,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"Use the <u>ALTER</u> statement to add a new table in a database.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["UPDATE","CREATE","No change is needed","INSERT"],
+    answer:[1],
+    expl:"<strong>CREATE TABLE</strong> adds a new table. ALTER modifies an existing object — it cannot add a new table."
+  },
+  {
+    id:98,
+    text:"You need to rename a column in a database table. Which data definition language (DDL) statement should you use?",
+    type:"single",
+    choices:["INSERT","ALTER","CREATE","UPDATE"],
+    answer:[1],
+    expl:"<strong>ALTER TABLE</strong> (e.g., ALTER TABLE t RENAME COLUMN old_name TO new_name) is used to rename a column."
+  },
+  {
+    id:99,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"Use <u>indexing</u> to create, remove, or change database objects.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["No change is needed","Data manipulation language (DML) statements","A unique constraint","Data definition language (DDL) statements"],
+    answer:[3],
+    expl:"<strong>Data Definition Language (DDL)</strong> statements (CREATE, ALTER, DROP) are used to create, remove, or change database objects — not indexing."
+  },
+  {
+    id:100,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"In a database table, each <u>column</u> represents a unique record.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["Row","Table","Index","No change is needed"],
+    answer:[0],
+    expl:"Each <strong>row</strong> represents a unique record in a table. Columns represent attributes/fields that describe the records."
+  },
+  {
+    id:101,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\nYou have two tables. Each table has three rows.\n\n\"<u>Nine</u> rows will be included in the Cartesian product of these two tables.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["Six","Zero","No change is needed","Three"],
+    answer:[2],
+    expl:"<strong>No change is needed.</strong> The Cartesian product multiplies row counts: 3 × 3 = <strong>9 rows</strong>. The statement is correct."
+  },
+  {
+    id:102,
+    text:"You have two tables named Salesperson and Sales. You need to ensure that each record in the Sales table has a valid associated salesperson record in the Salesperson table. Which database object should you add to the Sales table?",
+    type:"single",
+    choices:["Primary key","Nonclustered index","Foreign key","Clustered index"],
+    answer:[2],
+    expl:"A <strong>Foreign key</strong> on Sales.SalespersonID referencing Salesperson.SalespersonID ensures every sales record has a valid, existing salesperson."
+  },
+  {
+    id:103,
+    text:"You have a database table that stores information about school attendance with these requirements:\n- StudentName must consist of a string of characters.\n- GradeLevel must be only a whole number.\n- DaysAbsent can have one number after the decimal.\n\nMatch the data types to the column names.\n\nOptions: 1-BIT, 2-DATETIME, 3-DECIMAL, 4-INT, 5-VARCHAR, 6-CHAR",
+    type:"single",
+    choices:[
+      "StudentName: VARCHAR (5); GradeLevel: INT (4); DaysAbsent: DECIMAL (3)",
+      "StudentName: CHAR (6); GradeLevel: BIT (1); DaysAbsent: DATETIME (2)",
+      "StudentName: INT (4); GradeLevel: VARCHAR (5); DaysAbsent: BIT (1)",
+      "StudentName: DECIMAL (3); GradeLevel: CHAR (6); DaysAbsent: INT (4)"
+    ],
+    answer:[0],
+    expl:"<strong>VARCHAR</strong> for variable-length strings (StudentName), <strong>INT</strong> for whole numbers (GradeLevel), <strong>DECIMAL</strong> for one decimal place (DaysAbsent)."
+  },
+  {
+    id:104,
+    text:"While attending college, you accept an IT internship at a local charity. The charity needs to report on data that is related and exists in two tables. You need to establish a relationship between the data that is in the two tables. Which constraint should you define?",
+    type:"single",
+    choices:["Link Key","Index Key","Foreign Key","Default Key"],
+    answer:[2],
+    expl:"A <strong>Foreign Key</strong> constraint establishes a relationship between two tables by linking a column to the primary key of another table."
+  },
+  {
+    id:105,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"A view can be used to ensure <u>referential integrity</u>.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:[
+      "Limit access to specific rows or columns of data in a table",
+      "No change is needed",
+      "Save historical data before deleting it from the base table",
+      "Save an extra copy of data stored in a separate table"
+    ],
+    answer:[0],
+    expl:"A view is used to <strong>limit access to specific rows or columns</strong>. Referential integrity is enforced by foreign key constraints, not views."
+  },
+  {
+    id:106,
+    text:"You need to set up a database to provide a view of North American mammals. Match the SQL statements to the SQL query. Select the correct First, Second, and Third Code Segments:\n\nOptions: 1-CREATE VIEW [dbo].[NorthAmericanMammals_View], 2-GENERATE VIEW [dbo].[NorthAmericanMammals_View], 3-AS JOIN a.Id a.Name, 4-AS SELECT a.Id, a.Name, 5-FROM Animal a, 6-JOIN Animal a",
+    type:"single",
+    choices:[
+      "First: CREATE VIEW (1); Second: AS SELECT a.Id, a.Name (4); Third: FROM Animal a (5)",
+      "First: GENERATE VIEW (2); Second: AS JOIN a.Id, a.Name (3); Third: JOIN Animal a (6)",
+      "First: CREATE VIEW (1); Second: AS JOIN a.Id, a.Name (3); Third: FROM Animal a (5)",
+      "First: GENERATE VIEW (2); Second: AS SELECT a.Id, a.Name (4); Third: FROM Animal a (5)"
+    ],
+    answer:[0],
+    expl:"Correct SQL view syntax: <strong>CREATE VIEW</strong> [name] <strong>AS SELECT</strong> a.Id, a.Name <strong>FROM</strong> Animal a."
+  },
+  {
+    id:107,
+    text:"You have a database table named SongInformation with columns: SongName, CDsSold, etc. You need to create a SQL query to retrieve only the names of songs that sold more than 1000 compact discs (CDs). Which query should you use?",
+    type:"single",
+    choices:[
+      "Option C: SELECT SongName FROM SongInformation WHERE CDsSold > 1000",
+      "Option A: SELECT * FROM SongInformation WHERE CDsSold > 1000",
+      "Option D: SELECT SongName FROM SongInformation HAVING CDsSold > 1000",
+      "Option B: SELECT CDsSold FROM SongInformation WHERE SongName > 1000"
+    ],
+    answer:[0],
+    expl:"<strong>SELECT SongName FROM SongInformation WHERE CDsSold > 1000</strong> — selects only the name column with the correct filter condition."
+  },
+  {
+    id:108,
+    text:"You accept an IT internship at a local charity. The charity asks you to keep a record of its volunteers by using a database table named Volunteer. When volunteer information changes, you must update the table. You need to change Tia's name to Kimberly. Which statement should you choose?",
+    type:"single",
+    choices:[
+      "Option D: UPDATE Volunteer SET GivenName = 'Kimberly' WHERE GivenName = 'Tia'",
+      "Option B: UPDATE Volunteer SET 'Kimberly' WHERE GivenName = 'Tia'",
+      "Option C: INSERT INTO Volunteer VALUES ('Kimberly')",
+      "Option A: ALTER TABLE Volunteer SET GivenName = 'Kimberly'"
+    ],
+    answer:[0],
+    expl:"<strong>UPDATE Volunteer SET GivenName = 'Kimberly' WHERE GivenName = 'Tia'</strong> is the correct UPDATE syntax to change a specific record."
+  },
+  {
+    id:109,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"Use the <u>FROM</u> keyword in a SELECT statement to return rows that meet a specific condition.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["WHERE","No change is needed","UNION","ORDER BY"],
+    answer:[0],
+    expl:"<strong>WHERE</strong> filters rows based on a condition. FROM specifies the source table — it does not filter rows."
+  },
+  {
+    id:110,
+    text:"You need to combine the results of two queries into a single result that contains all of the rows from both queries. Which Structured Query Language (SQL) statement should you use?",
+    type:"single",
+    choices:["JOIN","TRUNCATE","UNION","EXCEPT"],
+    answer:[2],
+    expl:"<strong>UNION</strong> combines all rows from two queries into one result set. UNION removes duplicates by default; UNION ALL keeps them."
+  },
+  {
+    id:111,
+    text:"This question requires that you evaluate the underlined text to determine if it is correct.\n\n\"The <u>CREATE TABLE</u> command removes one or more table definitions and all data, indexes, triggers, constraints, and permission specifications for those tables.\"\n\nIf incorrect, select the answer choice that makes the statement correct.",
+    type:"single",
+    choices:["DROP TABLE","TRUNCATE TABLE","No change is needed","ALTER TABLE"],
+    answer:[0],
+    expl:"<strong>DROP TABLE</strong> removes the table definition and all associated objects. CREATE TABLE creates new tables — it does not remove anything."
+  },
+  {
+    id:112,
+    text:"You have the database table named Cars. You have a SQL statement with a WHERE clause filtering the results. How many rows are returned by the SQL statement?",
+    type:"single",
+    choices:["4","6","7","5"],
+    answer:[3],
+    expl:"Based on the Cars table and SQL statement in the PDF, <strong>5 rows</strong> satisfy the filter condition."
+  },
+  {
+    id:113,
+    text:"First normal form requires that a database excludes:",
+    type:"single",
+    choices:["Duplicate rows","Composite keys","Repeating groups","Foreign keys"],
+    answer:[2],
+    expl:"<strong>1NF</strong> requires elimination of <strong>repeating groups</strong> — each column must contain atomic (indivisible) values with no multi-valued fields."
+  },
+  {
+    id:114,
+    text:"You execute a statement inside a transaction to delete 100 rows from a table. The transaction fails after only 40 rows are deleted. What is the result in the database?",
+    type:"single",
+    choices:[
+      "The table will be corrupted",
+      "Forty (40) rows will be deleted from the table",
+      "The transaction will restart",
+      "No rows will be deleted from the table"
+    ],
+    answer:[3],
+    expl:"Transactions are atomic. When a transaction fails, a ROLLBACK occurs — <strong>no rows will be deleted</strong>, including the 40 already removed."
+  },
+  {
+    id:115,
+    text:"You have a table that contains product IDs and product names. You need to write an UPDATE statement to change the name of a specific product to glass. What should you include in the update statement?",
+    type:"single",
+    choices:["EXEC ProductName = 'glass'","LET ProductName = 'glass'","ASSIGN ProductName = 'glass'","SET ProductName = 'glass'"],
+    answer:[3],
+    expl:"In an UPDATE statement, <strong>SET</strong> is the keyword used to assign new values: UPDATE Product SET ProductName = 'glass' WHERE ..."
+  },
+  {
+    id:116,
+    text:"Your database contains a table named Customer. You need to delete the record from the Customer table that has a CustomerID of 12345. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option D: DELETE Customer WHERE CustomerID = 12345",
+      "Option B: REMOVE FROM Customer WHERE CustomerID = 12345",
+      "Option C: DROP FROM Customer WHERE CustomerID = 12345",
+      "Option A: DELETE FROM Customer WHERE CustomerID = 12345"
+    ],
+    answer:[3],
+    expl:"<strong>DELETE FROM Customer WHERE CustomerID = 12345</strong> is the correct SQL syntax to delete a specific row."
+  },
+  {
+    id:117,
+    text:"On which database structure does an INSERT statement operate?",
+    type:"single",
+    choices:["Stored procedure","Trigger","User","Table","Role"],
+    answer:[3],
+    expl:"INSERT statements operate on <strong>Tables</strong> — they add new rows to a table."
+  },
+  {
+    id:118,
+    text:"You have a table of products with fields for ProductID, Name, and Price. You need to write an UPDATE statement that sets the value in the InStock field to Yes for a specific ProductID. Which clause should you use in your update statement?",
+    type:"single",
+    choices:["THAT","WHERE","GROUP BY","HAVING"],
+    answer:[1],
+    expl:"<strong>WHERE</strong> specifies which rows to update. Without WHERE, the UPDATE would change InStock for ALL products."
+  },
+  {
+    id:119,
+    text:"You have the following table definition:\nCREATE TABLE Product (ProductID INTEGER, Name VARCHAR(20))\n\nYou need to insert a new product. The product's name is Plate and the product's ID is 12345. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option D: INSERT Product VALUES (12345, 'Plate')",
+      "Option B: INSERT INTO Product SET ProductID=12345, Name='Plate'",
+      "Option C: ADD INTO Product (ProductID, Name) VALUES (12345, 'Plate')",
+      "Option A: INSERT INTO Product (ProductID, Name) VALUES (12345, 'Plate')"
+    ],
+    answer:[3],
+    expl:"<strong>INSERT INTO Product (ProductID, Name) VALUES (12345, 'Plate')</strong> is the correct standard SQL INSERT syntax."
+  },
+  {
+    id:120,
+    text:"You assign User1 a set of permissions that include the WITH GRANT OPTION. The WITH GRANT OPTION enables User1 to:",
+    type:"single",
+    choices:["delegate permissions to other users","view other users' permissions","create new database users","request a log of permission use"],
+    answer:[0],
+    expl:"<strong>WITH GRANT OPTION</strong> allows the user to delegate their granted permissions to other users — they can GRANT the same permissions."
+  },
+  {
+    id:121,
+    text:"Which type of index changes the order in which the data is stored in a table?",
+    type:"single",
+    choices:["clustered","sequential","non-sequential","non-clustered"],
+    answer:[0],
+    expl:"A <strong>clustered index</strong> physically reorders the rows of the table on disk to match the index order. Only one clustered index per table is allowed."
+  },
+  {
+    id:122,
+    text:"Which statement should you use to remove a foreign key?",
+    type:"single",
+    choices:["ALTER FOREIGN KEY","DELETE TABLE","DELETE FOREIGN KEY","ALTER TABLE"],
+    answer:[3],
+    expl:"<strong>ALTER TABLE</strong> tablename DROP FOREIGN KEY keyname — you must use ALTER TABLE to drop a foreign key constraint."
+  },
+  {
+    id:123,
+    text:"You need to store the first name, last name, and student ID for 100 students. This information will be stored in a table as:",
+    type:"single",
+    choices:["three items and 100 cells","100 items and three cells","100 rows and three columns","three rows and 100 columns"],
+    answer:[2],
+    expl:"Each student is one <strong>row</strong> (100 students = 100 rows). Each piece of information is a <strong>column</strong> (first name, last name, ID = 3 columns)."
+  },
+  {
+    id:124,
+    text:"What are three valid data manipulation language (DML) commands? (Choose three.)",
+    type:"multi",
+    choices:["OUTPUT","UPDATE","DELETE","INSERT","COMMIT"],
+    answer:[1,2,3],
+    expl:"The three valid DML commands are <strong>UPDATE</strong> (modify data), <strong>DELETE</strong> (remove rows), and <strong>INSERT</strong> (add rows). OUTPUT and COMMIT are not DML commands."
+  },
+  {
+    id:125,
+    text:"What is one difference between an update statement and a delete statement?",
+    type:"single",
+    choices:[
+      "An update statement can change only one row",
+      "An update statement does not remove rows from a table",
+      "A delete statement cannot use a where clause",
+      "A delete statement works only within a stored procedure"
+    ],
+    answer:[1],
+    expl:"<strong>UPDATE modifies existing rows but does not remove them</strong>. DELETE removes rows from the table. Both can use WHERE clauses."
+  },
+  {
+    id:126,
+    text:"You have a Department table and an Employee table in your database. You need to ensure that an employee can be assigned to only an existing department. What should you apply to the Employee table?",
+    type:"single",
+    choices:["A data type","A primary key","A unique constraint","A foreign key","An index"],
+    answer:[3],
+    expl:"A <strong>foreign key</strong> on Employee.DepartmentID referencing Department.DepartmentID ensures only valid (existing) departments can be assigned."
+  },
+  {
+    id:127,
+    text:"You need to list the name and price of each product, sorted by price from highest to lowest. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option B: SELECT Name, Price FROM Product ORDER BY Price ASC",
+      "Option C: SELECT Name, Price FROM Product ORDER BY Price",
+      "Option D: SELECT Name FROM Product ORDER BY Price DESC",
+      "Option A: SELECT Name, Price FROM Product ORDER BY Price DESC"
+    ],
+    answer:[3],
+    expl:"<strong>SELECT Name, Price FROM Product ORDER BY Price DESC</strong> — selects both columns and sorts from highest to lowest with DESC."
+  },
+  {
+    id:128,
+    text:"You delete rows in a table named Order. The corresponding rows in the OrderItem table are automatically deleted. This process is an example of a/an:",
+    type:"single",
+    choices:["Cascade delete","Domino delete","Functional delete","Inherited delete","Waterfall delete"],
+    answer:[0],
+    expl:"<strong>Cascade delete</strong> automatically deletes related rows in child tables when the parent row is deleted, defined by ON DELETE CASCADE."
+  },
+  {
+    id:129,
+    text:"Which statement deletes the rows where the employee's phone number is not entered?",
+    type:"single",
+    choices:[
+      "Option B: DELETE FROM Employee WHERE Phone IS NOT NULL",
+      "Option C: DELETE FROM Employee WHERE Phone = NULL",
+      "Option A: DELETE FROM Employee WHERE Phone IS NULL",
+      "Option D: DELETE FROM Employee WHERE Phone != ''"
+    ],
+    answer:[2],
+    expl:"<strong>DELETE FROM Employee WHERE Phone IS NULL</strong> — use IS NULL (not = NULL) to correctly check for null values."
+  },
+  {
+    id:130,
+    text:"You need to insert two new products into the Product table. The first product is named Book with ID 125. The second product is named Movie with ID 126. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option A: INSERT INTO Product VALUES (125,'Book'),(126,'Movie')",
+      "Option C: INSERT INTO Product VALUES (125,'Book'); INSERT INTO Product VALUES (126,'Movie')",
+      "Option D: INSERT INTO Product SELECT 125,'Book' UNION SELECT 126,'Movie'",
+      "Option B: ADD INTO Product VALUES (125,'Book'),(126,'Movie')"
+    ],
+    answer:[0],
+    expl:"<strong>INSERT INTO Product VALUES (125,'Book'),(126,'Movie')</strong> inserts multiple rows in a single statement using comma-separated value groups."
+  },
+  {
+    id:131,
+    text:"You have a table named Employee that includes four columns. You execute the following statement:\nSELECT * FROM Employee\n\nWhich columns are returned?",
+    type:"single",
+    choices:["all columns","only the first and last columns","only the last column","only the first column"],
+    answer:[0],
+    expl:"<strong>SELECT *</strong> returns <strong>all columns</strong> from the specified table. The asterisk (*) is a wildcard for all columns."
+  },
+  {
+    id:132,
+    text:"Which two elements are required to define a column? (Choose two.)",
+    type:"multi",
+    choices:["A data type","A name","A key","An Index"],
+    answer:[0,1],
+    expl:"A column requires at minimum a <strong>name</strong> (to identify it) and a <strong>data type</strong> (to define what values it stores). Keys and indexes are optional."
+  },
+  {
+    id:133,
+    text:"You are creating a table to store customer data. The AccountNumber column uses values that always consist of one letter and four digits. Which data type should you use for the AccountNumber column?",
+    type:"single",
+    choices:["SMALLINT","BYTE","CHAR","DOUBLE"],
+    answer:[2],
+    expl:"<strong>CHAR(5)</strong> is ideal for fixed-length strings of exactly one letter and four digits. CHAR stores fixed-length character data."
+  },
+  {
+    id:134,
+    text:"Which keyword must be included in a create view statement?",
+    type:"single",
+    choices:["SELECT","UPDATE","WHERE","ORDER BY"],
+    answer:[0],
+    expl:"A CREATE VIEW statement must include <strong>SELECT</strong> — the view definition is always a SELECT query: CREATE VIEW viewname AS SELECT ..."
+  },
+  {
+    id:135,
+    text:"You have a table named Customer. You need to add a new column named District. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option B: ALTER TABLE Customer ADD District VARCHAR(50)",
+      "Option A: UPDATE TABLE Customer ADD COLUMN District",
+      "Option C: INSERT INTO Customer (District) VALUES (NULL)",
+      "Option D: CREATE COLUMN District IN Customer"
+    ],
+    answer:[0],
+    expl:"<strong>ALTER TABLE Customer ADD District VARCHAR(50)</strong> is the correct DDL syntax to add a new column to an existing table."
+  },
+  {
+    id:136,
+    text:"You need to remove a view named EmployeeView from your database. Which statement should you use?",
+    type:"single",
+    choices:["DROP VIEW EmployeeView","DELETE VIEW EmployeeView","DROP EmployeeView","DELETE EmployeeView"],
+    answer:[0],
+    expl:"<strong>DROP VIEW EmployeeView</strong> is the correct SQL syntax to remove a view from the database."
+  },
+  {
+    id:137,
+    text:"A named group of SQL statements that can be executed in a database is called a:",
+    type:"single",
+    choices:["Subroutine","Stored procedure","Method","Formula"],
+    answer:[1],
+    expl:"A <strong>stored procedure</strong> is a named, precompiled group of SQL statements stored in the database that can be executed on demand."
+  },
+  {
+    id:138,
+    text:"You have a table named Product that contains the following data. The ProductID column is the primary key. The CategoryID column is a foreign key to a separate table named Category. You execute:\n\nINSERT INTO Product VALUES (3296, 'Table', 4444)\n\nCategoryID 4444 does not exist in Category. What is the result?",
+    type:"single",
+    choices:["a foreign key constraint violation","a syntax error","a new row in the Product table","a primary key constraint violation","a new row in the Category table"],
+    answer:[0],
+    expl:"A <strong>foreign key constraint violation</strong> occurs because CategoryID 4444 does not exist in the Category table — referential integrity is violated."
+  },
+  {
+    id:139,
+    text:"Denormalization is performed in order to:",
+    type:"single",
+    choices:["Improve query performance","Create smaller tables","Reduce redundancy","Eliminate repeating groups"],
+    answer:[0],
+    expl:"<strong>Denormalization</strong> intentionally adds redundancy to a normalized database to <strong>improve query performance</strong> by reducing the need for complex JOINs."
+  },
+  {
+    id:140,
+    text:"You have a table named Product that contains one million rows. You need to search for product information in the Product table by using the product's unique ID. What will make this type of search more efficient?",
+    type:"single",
+    choices:["An index","A subquery","A trigger","A cursor"],
+    answer:[0],
+    expl:"An <strong>index</strong> on the product ID dramatically speeds up lookups by creating a sorted structure, avoiding full table scans across one million rows."
+  },
+  {
+    id:141,
+    text:"You need to establish a set of permissions that you can routinely assign to new users. What should you create?",
+    type:"single",
+    choices:["Resource","Role","List","Group"],
+    answer:[1],
+    expl:"A <strong>Role</strong> is a named collection of permissions that can be efficiently assigned to multiple users."
+  },
+  {
+    id:142,
+    text:"You need to disable User1's access to view the data in the Customer table. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option B: REVOKE SELECT ON Customer FROM User1",
+      "Option C: DROP USER User1",
+      "Option D: DENY SELECT ON Customer TO User1",
+      "Option A: REMOVE SELECT FROM User1 ON Customer"
+    ],
+    answer:[2],
+    expl:"<strong>DENY SELECT ON Customer TO User1</strong> explicitly denies SELECT permission, overriding any GRANT. REVOKE only removes a grant without explicitly denying."
+  },
+  {
+    id:143,
+    text:"You have a table named Student that contains 100 rows. Some of the rows have a NULL value in the FirstName column. You execute the following statement:\nDELETE FROM Student\n\nWhat is the result?",
+    type:"single",
+    choices:[
+      "You will receive an error message",
+      "All rows in the table will be deleted",
+      "All rows containing a NULL value in the FirstName column will be deleted",
+      "All rows and the table definition will be deleted"
+    ],
+    answer:[1],
+    expl:"<strong>DELETE FROM Student</strong> without a WHERE clause deletes <strong>ALL rows</strong> in the table. The table structure remains intact (unlike DROP TABLE)."
+  },
+  {
+    id:144,
+    text:"Data in a database is stored in:",
+    type:"single",
+    choices:["Tables","Data types","Stored procedures","Queries"],
+    answer:[0],
+    expl:"Data in a relational database is physically stored in <strong>tables</strong>. Views, stored procedures, and queries are objects that work with table data."
+  },
+  {
+    id:145,
+    text:"You need to store the contact information for each student in your school database. You should store each student's information in a:",
+    type:"single",
+    choices:["Row","Variable","Function","Stored procedure"],
+    answer:[0],
+    expl:"Each student's complete information (one record) is stored in one <strong>row</strong> of a table. Each column holds one attribute of that student."
+  },
+  {
+    id:146,
+    text:"Which category of SQL statements is used to add, remove, and modify database structures?",
+    type:"single",
+    choices:["Data manipulation language (DML)","Data definition language (DDL)","Data control language (DCL)","Data access language (DAL)"],
+    answer:[1],
+    expl:"<strong>Data Definition Language (DDL)</strong> — including CREATE, ALTER, and DROP — is used to define and modify database structure."
+  },
+  {
+    id:147,
+    text:"You have a Customer table and an Order table. You join the Customer table with the Order table by using the CustomerID column. The results include:\n- All customers and their orders\n- Customers who have no orders\n\nWhich type of join do these results represent?",
+    type:"single",
+    choices:["Outer join","Inner join","Partial join","Complete join"],
+    answer:[0],
+    expl:"An <strong>Outer join</strong> (specifically LEFT OUTER JOIN) returns all rows from the left table (Customer) including those with no matching rows in Order."
+  },
+  {
+    id:148,
+    text:"You have a table named Employee that includes columns: EmployeeID, EmployeeName. You need to return the number of rows in the table. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option D: SELECT COUNT(*) FROM Employee",
+      "Option B: SELECT SUM(*) FROM Employee",
+      "Option A: SELECT ROWS FROM Employee",
+      "Option C: SELECT NUMBER FROM Employee"
+    ],
+    answer:[0],
+    expl:"<strong>SELECT COUNT(*) FROM Employee</strong> returns the total number of rows in the table."
+  },
+  {
+    id:149,
+    text:"The Product table contains the following data. You execute the following statement:\nSELECT COUNT(*) FROM Product WHERE Quantity > 18\n\nWhat is the value returned by this statement?",
+    type:"single",
+    choices:["2","3","4","1"],
+    answer:[0],
+    expl:"Based on the Product table shown in the PDF, <strong>2 products</strong> have a Quantity greater than 18."
+  },
+  {
+    id:150,
+    text:"Which command should you use to remove a table from a database?",
+    type:"single",
+    choices:["DROP TABLE","REMOVE TABLE","UPDATE TABLE","DELETE TABLE"],
+    answer:[0],
+    expl:"<strong>DROP TABLE</strong> is the DDL command that completely removes a table and all its data from the database."
+  },
+  {
+    id:151,
+    text:"You execute the following statement (a SELECT within another SELECT). This statement is an example of a/an:",
+    type:"single",
+    choices:["Subquery","Outer join","Union","Cartesian product"],
+    answer:[0],
+    expl:"A <strong>subquery</strong> (nested query) is a SELECT statement embedded within another SQL statement to provide data for the outer query."
+  },
+  {
+    id:152,
+    text:"Which keyword would you use in a select statement to return rows that meet a specific condition?",
+    type:"single",
+    choices:["WHERE","UNION","FROM","ORDER BY"],
+    answer:[0],
+    expl:"<strong>WHERE</strong> filters rows based on a specified condition in a SELECT statement."
+  },
+  {
+    id:153,
+    text:"You have a table that contains information about all students in your school. Which SQL keyword should you use to change a student's first name in the table?",
+    type:"single",
+    choices:["INSERT","SELECT","CHANGE","UPDATE"],
+    answer:[3],
+    expl:"<strong>UPDATE</strong> is used to modify existing data: UPDATE Students SET FirstName = 'NewName' WHERE StudentID = ..."
+  },
+  {
+    id:154,
+    text:"You need to populate a table named EmployeeCopy with data from an existing table named Employee. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option A: SELECT INTO EmployeeCopy FROM Employee",
+      "Option B: INSERT INTO EmployeeCopy SELECT * FROM Employee",
+      "Option C: CREATE TABLE EmployeeCopy AS SELECT * FROM Employee",
+      "Option D: COPY Employee TO EmployeeCopy"
+    ],
+    answer:[1],
+    expl:"<strong>INSERT INTO EmployeeCopy SELECT * FROM Employee</strong> copies all rows from Employee into the existing EmployeeCopy table."
+  },
+  {
+    id:155,
+    text:"You are writing a select statement to find every product whose name contains a specific character. Which keyword should you use in your where clause?",
+    type:"single",
+    choices:["FIND","LIKE","INCLUDES","BETWEEN"],
+    answer:[1],
+    expl:"<strong>LIKE</strong> is used with wildcard characters (% and _) for pattern matching: WHERE ProductName LIKE '%glass%'."
+  },
+  {
+    id:156,
+    text:"A database contains two tables named Customer and Order. You execute the following statement:\n\nDELETE FROM Order WHERE CustomerID = 209\n\nWhat is the result?",
+    type:"single",
+    choices:[
+      "The first order for CustomerID 209 is deleted from the Order table",
+      "All orders for CustomerID 209 are deleted from the Order table",
+      "All orders for CustomerID 209 are deleted from the Order table, and CustomerID 209 is deleted from the Customer table",
+      "CustomerID 209 is deleted from the Customer table"
+    ],
+    answer:[1],
+    expl:"<strong>All orders for CustomerID 209 are deleted from the Order table.</strong> The DELETE only affects the Order table — not the Customer table unless CASCADE is configured."
+  },
+  {
+    id:157,
+    text:"You have a table named Product. The Product table has columns for ProductDescription and ProductCategory. You need to change the ProductCategory value for all the spoons in the Product table to 43. Which statement should you use?",
+    type:"single",
+    choices:[
+      "Option B: UPDATE Product SET ProductCategory = 43 WHERE ProductDescription = 'spoon'",
+      "Option A: UPDATE Product ProductCategory = 43 WHERE ProductDescription = 'spoon'",
+      "Option C: CHANGE Product SET ProductCategory = 43 WHERE ProductDescription = 'spoon'",
+      "Option D: ALTER Product SET ProductCategory = 43 WHERE ProductDescription = 'spoon'"
+    ],
+    answer:[0],
+    expl:"<strong>UPDATE Product SET ProductCategory = 43 WHERE ProductDescription = 'spoon'</strong> is the correct UPDATE syntax."
+  },
+  {
+    id:158,
+    text:"Which command should you use to add a column to an existing table?",
+    type:"single",
+    choices:["UPDATE","CHANGE","ALTER","INSERT","MODIFY"],
+    answer:[2],
+    expl:"<strong>ALTER TABLE</strong> tablename ADD columnname datatype — ALTER is the DDL command for modifying existing table structure."
+  },
+  {
+    id:159,
+    text:"You have the following table definition:\nCREATE TABLE Product (ID INTEGER PRIMARY KEY, Name VARCHAR(20), Quantity INTEGER)\n\nYou execute: SELECT Name FROM Product WHERE Quantity IS NOT NULL\n\nHow many rows are returned?",
+    type:"single",
+    choices:["3","4","1","2","0"],
+    answer:[0],
+    expl:"Based on the Product table in the PDF, <strong>3 products</strong> have non-NULL Quantity values."
+  },
+  {
+    id:160,
+    text:"Which constraint ensures a unique value in the ID column for each customer?",
+    type:"single",
+    choices:["DISTINCT","PRIMARY KEY","FOREIGN KEY","SEQUENTIAL"],
+    answer:[1],
+    expl:"A <strong>PRIMARY KEY</strong> constraint ensures each value in the ID column is unique and not null, uniquely identifying each customer record."
+  },
+  {
+    id:161,
+    text:"The component that holds information for a single entry in a table is called a:",
+    type:"single",
+    choices:["COLUMN","ROW","DATA TYPE","VIEW"],
+    answer:[1],
+    expl:"A <strong>ROW</strong> holds all information for one single entry (record) in a table. A column holds one attribute across all records."
+  },
+  {
+    id:162,
+    text:"You execute the following statement:\nSELECT EmployeeID, FirstName, DepartmentName FROM Employee, Department\n\nThis type of operation is called a/an:",
+    type:"single",
+    choices:["Equi-join","Outer join","Cartesian product","Intersection"],
+    answer:[2],
+    expl:"A <strong>Cartesian product</strong> (cross join) results from joining tables without a join condition, producing all possible combinations of rows."
+  },
+  {
+    id:163,
+    text:"In SQL, an insert statement is used to add a:",
+    type:"single",
+    choices:["Column to a table definition","Row of data to a table","User to a database","Table to a database"],
+    answer:[1],
+    expl:"An <strong>INSERT statement adds a row of data</strong> to a table. CREATE adds tables, ALTER adds columns, CREATE USER creates users."
+  },
+  {
+    id:164,
+    text:"You are writing an SQL statement to retrieve rows from a table. Which data manipulation language (DML) command should you use?",
+    type:"single",
+    choices:["SELECT","GET","OUTPUT","READ"],
+    answer:[0],
+    expl:"<strong>SELECT</strong> is the DML command used to retrieve/query data from database tables."
+  },
+  {
+    id:165,
+    text:"You need to store product names that vary from three to 30 characters. You also need to minimize the amount of storage space that is used. Which data type should you use?",
+    type:"single",
+    choices:["CHAR (30)","VARCHAR (3, 30)","VARCHAR (30)","CHAR (3, 30)"],
+    answer:[2],
+    expl:"<strong>VARCHAR(30)</strong> stores variable-length strings up to 30 characters, using only as much space as needed. CHAR(30) always uses 30 bytes regardless of actual length."
+  },
+  {
+    id:166,
+    text:"One reason to create a stored procedure is to:",
+    type:"single",
+    choices:["Bypass case sensitivity requirements","Minimize storage space","Improve performance","Give the user control of the query logic"],
+    answer:[2],
+    expl:"Stored procedures <strong>improve performance</strong> because they are precompiled and cached by the database engine, reducing parsing overhead."
+  },
+  {
+    id:167,
+    text:"Which permission does a user need in order to run a stored procedure?",
+    type:"single",
+    choices:["RUN","ALLOW","CALL","EXECUTE"],
+    answer:[3],
+    expl:"Users need <strong>EXECUTE</strong> permission to run a stored procedure: GRANT EXECUTE ON ProcedureName TO UserName."
+  },
+  {
+    id:168,
+    text:"You have a table named Product. You create a view that includes all the products from the Product table that are in the Furniture category. You execute a statement on the Product table that deletes all the products in the Furniture category. After you execute the statement, the result set of the view is:",
+    type:"single",
+    choices:["Deleted","Unchanged","Archived","Empty"],
+    answer:[3],
+    expl:"The view is <strong>empty</strong> — a view is a virtual table based on underlying data. When Furniture products are deleted from the base table, the view returns no rows."
+  },
+  {
+    id:169,
+    text:"You have the following table definition:\nCREATE TABLE Road (RoadID INTEGER NOT NULL, Distance INTEGER NOT NULL)\n\nThe Road table contains data including RoadID 1234. You execute:\nINSERT INTO Road VALUES (1234, 36)\n\nWhat is the result?",
+    type:"single",
+    choices:[
+      "An error stating that duplicate IDs are not allowed",
+      "An error stating that NULL values are not allowed",
+      "A new row in the table",
+      "A syntax error"
+    ],
+    answer:[0],
+    expl:"RoadID 1234 already exists. Since RoadID has a NOT NULL constraint (and likely a PK or UNIQUE), inserting a duplicate value causes an <strong>error about duplicate IDs</strong>."
+  },
+  {
+    id:170,
+    text:"You need to store product quantities, and you want to minimize the amount of storage space that is used. Which data type should you use?",
+    type:"single",
+    choices:["INTEGER","FLOAT","COUNT","DOUBLE"],
+    answer:[0],
+    expl:"<strong>INTEGER</strong> stores whole numbers (quantities are always whole) using less space than FLOAT or DOUBLE, which are designed for decimal values."
+  },
+  {
+    id:171,
+    text:"Which statement will result in the creation of an index?",
+    type:"single",
+    choices:[
+      "Option B: CREATE NONCLUSTERED INDEX idx ON Product(Name)",
+      "Option D: ADD INDEX idx ON Product(Name)",
+      "Option C: INSERT INDEX idx ON Product(Name)",
+      "Option A: CREATE INDEX idx ON Product(Name)"
+    ],
+    answer:[3],
+    expl:"<strong>CREATE INDEX idx ON Product(Name)</strong> is the correct standard SQL syntax to create an index on a column."
+  },
+  {
+    id:172,
+    text:"You need to enable a new employee to authenticate to your database. Which command should you use?",
+    type:"single",
+    choices:["INSERT USER","ADD USER","CREATE USER","ALLOW USER","ALTER USER"],
+    answer:[2],
+    expl:"<strong>CREATE USER</strong> is the SQL command to create a new database user account, enabling authentication."
+  },
+  {
+    id:173,
+    text:"Which keyword can be used in a create table statement?",
+    type:"single",
+    choices:["DISTINCT","GROUP BY","UNIQUE","ORDER BY"],
+    answer:[2],
+    expl:"<strong>UNIQUE</strong> is a valid constraint keyword in CREATE TABLE that ensures all values in a column are distinct."
+  },
+  {
+    id:174,
+    text:"Which command should you use to give a user permission to read the data in a table?",
+    type:"single",
+    choices:["PERMIT READ","ALLOW SELECT","GRANT SELECT","LET READ"],
+    answer:[2],
+    expl:"<strong>GRANT SELECT ON tableName TO userName</strong> gives a user read (SELECT) permission on a table."
+  },
+  {
+    id:175,
+    text:"In which situation do you need to perform a restore on a database?",
+    type:"single",
+    choices:[
+      "When you encounter an error in your application",
+      "When data becomes corrupted in the database",
+      "When you need to roll back a transaction",
+      "When data needs to be deleted from the database"
+    ],
+    answer:[1],
+    expl:"A <strong>database restore</strong> is needed when data becomes corrupted, lost, or the database is damaged — not for application errors, rollbacks, or planned deletions."
+  },
+  {
+    id:176,
+    text:"At 3:00 P.M. (1500 hours), you create a backup of your database. At 4:00 P.M. (1600 hours), you create a table named Customer and import data into the table. At 5:00 P.M. (1700 hours), your server fails. You run a script to apply only the 3:00 P.M. backup to your database. What is the result of the script?",
+    type:"single",
+    choices:[
+      "The script fails",
+      "The Customer table exists but has no data",
+      "The Customer data no longer exists",
+      "The Customer table no longer exists"
+    ],
+    answer:[3],
+    expl:"Applying only the 3PM backup restores the database to its 3PM state. Since the Customer table was created at 4PM (AFTER the backup), <strong>the Customer table no longer exists</strong>."
+  },
+  {
+    id:177,
+    text:"Which statement creates a composite key?",
+    type:"single",
+    choices:[
+      "Option B: CREATE TABLE T (A INT, B INT, PRIMARY KEY (A, B))",
+      "Option A: CREATE TABLE T (A INT PRIMARY KEY, B INT PRIMARY KEY)",
+      "Option C: CREATE TABLE T (A INT, B INT, UNIQUE(A), UNIQUE(B))",
+      "Option D: CREATE TABLE T (A INT, B INT, FOREIGN KEY(A, B))"
+    ],
+    answer:[0],
+    expl:"<strong>PRIMARY KEY (A, B)</strong> in the table constraint section creates a composite primary key using two columns."
+  },
+  {
+    id:178,
+    text:"Which key uniquely identifies a row in a table?",
+    type:"single",
+    choices:["local","foreign","primary","superkey"],
+    answer:[2],
+    expl:"A <strong>primary key</strong> uniquely identifies each row in a table. It must be unique and not null."
+  },
+  {
+    id:179,
+    text:"You have a table that contains the following data. You break the table into the following two tables. This process is referred to as:",
+    type:"single",
+    choices:["denormalization","defragmentation","fragmentation","normalization"],
+    answer:[3],
+    expl:"<strong>Normalization</strong> is the process of organizing a database by decomposing large tables into smaller, related tables to reduce redundancy and improve integrity."
+  },
+  {
+    id:180,
+    text:"You have a table that contains the following data with ProductID and ProductCategory. Which database term is used to describe the relationship where knowing ProductID determines ProductCategory?",
+    type:"single",
+    choices:["Cohort","Functionally dependent","Relationally dependent","Compositional","Deterministic"],
+    answer:[1],
+    expl:"ProductCategory is <strong>functionally dependent</strong> on ProductID — knowing the ProductID determines what the ProductCategory value will be."
+  },
+  {
+    id:181,
+    text:"The terms \"bitmap,\" \"b-tree,\" and \"hash\" refer to which type of database structure?",
+    type:"single",
+    choices:["View","Trigger","Stored procedure","Index","Function"],
+    answer:[3],
+    expl:"Bitmap, B-tree, and hash are all types of <strong>index</strong> structures — different algorithms used to organize index data for efficient lookups."
+  },
+  {
+    id:182,
+    text:"One reason to add an index is to:",
+    type:"single",
+    choices:[
+      "Improve performance of select statements",
+      "Improve performance of insert statements",
+      "Decrease storage space",
+      "Increase database security"
+    ],
+    answer:[0],
+    expl:"Indexes primarily <strong>improve SELECT query performance</strong>. They actually slow down INSERT/UPDATE/DELETE because the index must be updated too."
+  },
+  {
+    id:183,
+    text:"One error that may occur is attempting to retrieve data with a well-written query but against the wrong ________.",
+    type:"single",
+    choices:["row","database","column","table"],
+    answer:[3],
+    expl:"Querying the wrong <strong>table</strong> is a common error — the SQL syntax is correct, but it targets the wrong table, returning unexpected or no results."
+  },
+  {
+    id:184,
+    text:"Which statement best defines a syntax error?",
+    type:"single",
+    choices:[
+      "Prevents changes to a database from being completed",
+      "Causes tables to not appear correctly within a database",
+      "Prevents a table from being created",
+      "Causes a statement not to run"
+    ],
+    answer:[3],
+    expl:"A <strong>syntax error</strong> occurs when SQL code violates grammar rules, causing the statement to fail to parse and execute — it cannot run at all."
+  },
+  {
+    id:185,
+    text:"One error that may occur when manipulating data is a missing _______:",
+    type:"single",
+    choices:["table","column","keyword","query"],
+    answer:[2],
+    expl:"A missing <strong>keyword</strong> (e.g., forgetting FROM, WHERE, or SET) is a common SQL error that causes syntax errors and statement failures."
+  },
+  {
+    id:186,
+    text:"What clause should always be included in an UPDATE statement?",
+    type:"single",
+    choices:["WHERE","GROUP BY","FROM","HAVING"],
+    answer:[0],
+    expl:"<strong>WHERE</strong> should always be included in UPDATE to specify which rows to modify. Without WHERE, the update affects ALL rows in the table."
+  },
+  {
+    id:187,
+    text:"What must be included in parenthesis in an INSERT INTO .. VALUES statement?",
+    type:"single",
+    choices:["column types","number of columns","null values","required fields"],
+    answer:[3],
+    expl:"The VALUES clause must contain <strong>required fields</strong> (the actual data values) in parentheses, matching the columns specified."
+  },
+  {
+    id:188,
+    text:"What statement is used to copy records from an existing table to a NEW table?",
+    type:"single",
+    choices:["SELECT WITHIN","SELECT","SELECT INTO","INSERT INTO SELECT"],
+    answer:[2],
+    expl:"<strong>SELECT INTO</strong> creates a new table and populates it with data: SELECT * INTO NewTable FROM ExistingTable."
+  },
+  {
+    id:189,
+    text:"Before running a DELETE statement, it is always a good idea to run a(n) ____________ statement on the table that is about to be changed.",
+    type:"single",
+    choices:["SELECT","INSERT","UPDATE","DROP"],
+    answer:[0],
+    expl:"Running a <strong>SELECT</strong> with the same WHERE clause before DELETE lets you verify exactly which rows will be affected, preventing accidental data loss."
+  },
+  {
+    id:190,
+    text:"What statement is used to copy records from one table into an EXISTING table?",
+    type:"single",
+    choices:["INSERT INTO .. SELECT","SELECT INTO","SELECT WITHIN","SELECT"],
+    answer:[0],
+    expl:"<strong>INSERT INTO .. SELECT</strong> copies rows from a source table into an existing target table: INSERT INTO ExistingTable SELECT * FROM SourceTable."
+  },
+  {
+    id:191,
+    text:"What keyword removes records from a table?",
+    type:"single",
+    choices:["DELETE","REMOVE","DROP","CANCEL"],
+    answer:[0],
+    expl:"<strong>DELETE</strong> removes rows from a table. DROP removes the entire table object. REMOVE and CANCEL are not SQL keywords."
+  },
+  {
+    id:192,
+    text:"What statement is used to insert values into a table?",
+    type:"single",
+    choices:["ADD INTO ... VALUES","INSERT VALUES ... INTO","ADD VALUES","INSERT INTO ... VALUES"],
+    answer:[3],
+    expl:"<strong>INSERT INTO tableName (columns) VALUES (values)</strong> is the correct SQL syntax for inserting data into a table."
+  },
+  {
+    id:193,
+    text:"What statement is used to change existing data?",
+    type:"single",
+    choices:["CHANGE","NEW","UPDATE","MODIFY"],
+    answer:[2],
+    expl:"<strong>UPDATE</strong> is the DML command used to modify/change existing data in a table row."
+  },
+  {
+    id:194,
+    text:"What is the difference between a DELETE statement and a TRUNCATE TABLE statement?",
+    type:"single",
+    choices:[
+      "One can identify specific records that are being deleted with a TRUNCATE TABLE statement, while a DELETE statement allows one to delete specific characters in a record",
+      "One can identify specific records that are being deleted with a DELETE statement, while a TRUNCATE TABLE statement deletes all data in a table",
+      "One can identify specific records with a TRUNCATE TABLE statement, while a DELETE statement deletes all data",
+      "One can identify specific records with a DELETE statement, while TRUNCATE TABLE allows deleting specific characters"
+    ],
+    answer:[1],
+    expl:"<strong>DELETE</strong> can target specific rows with WHERE. <strong>TRUNCATE TABLE</strong> removes ALL rows without condition — it cannot be filtered."
+  },
+  {
+    id:195,
+    text:"While a clustered index is based on a __________, a nonclustered index can be based on any other field.",
+    type:"single",
+    choices:["column","primary key field","foreign key field","row"],
+    answer:[1],
+    expl:"A clustered index is typically based on the <strong>primary key field</strong>, which physically orders table data. Non-clustered indexes can be on any column."
+  },
+  {
+    id:196,
+    text:"What is not allowed in object names in SQL?",
+    type:"single",
+    choices:["numbers","spaces","special characters","symbols"],
+    answer:[1],
+    expl:"<strong>Spaces</strong> are not allowed in standard SQL object names. Names with spaces require delimiters like brackets [My Table] or quotes."
+  },
+  {
+    id:197,
+    text:"Which command removes a table from a database?",
+    type:"single",
+    choices:["CLEAR TABLE","DROP TABLE","DELETE TABLE","ELIMINATE TABLE"],
+    answer:[1],
+    expl:"<strong>DROP TABLE</strong> is the DDL command that permanently removes a table definition and all its data from the database."
+  },
+  {
+    id:198,
+    text:"What type of parameter must be specified when creating a stored procedure?",
+    type:"single",
+    choices:["number","output","boolean","input"],
+    answer:[3],
+    expl:"An <strong>input</strong> parameter passes values into the stored procedure when it is called. Output parameters are optional."
+  },
+  {
+    id:199,
+    text:"Which statement best defines a view?",
+    type:"single",
+    choices:[
+      "A stored statement that leads one to specific information",
+      "A location within a database that stores general information",
+      "A location within a database that stores specific information",
+      "A stored statement that leads one to general information"
+    ],
+    answer:[0],
+    expl:"A <strong>view</strong> is a stored SELECT statement (virtual table) that provides a specific, defined perspective of the data in one or more base tables."
+  },
+  {
+    id:200,
+    text:"To change a view, with what keyword should CREATE in the CREATE VIEW command be replaced?",
+    type:"single",
+    choices:["CHANGE","ALTER","REPLACE","UPDATE"],
+    answer:[1],
+    expl:"<strong>ALTER VIEW</strong> is the correct command to modify an existing view definition in SQL."
+  }
+];
+
+// ============================================================
+// CONFIG
+// ============================================================
+const QUIZ_SIZE = 40;
+
+// ============================================================
+// STATE
+// ============================================================
+let answered = {};     // uid -> [chosen indices in shuffled space]
+let pending = {};      // uid -> [pending selections for multi]
+let activeQ = [];      // 40 enriched question objects for this session
+let curFilter = 'all';
+let curSearch = '';
+
+// ============================================================
+// RANDOMIZER
+// ============================================================
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pickSet() {
+  const pool = shuffle(ALL_QUESTIONS).slice(0, QUIZ_SIZE);
+  return pool.map((q, idx) => {
+    // Shuffle choices and remap answers
+    const origIndices = q.choices.map((_, i) => i);
+    const shuffled = shuffle(origIndices);  // shuffled[newPos] = origIdx
+    const remapped = q.answer.map(origIdx => shuffled.indexOf(origIdx));
+    return {
+      ...q,
+      _uid: `${q.id}_${idx}`,
+      displayChoices: shuffled.map(oi => q.choices[oi]),
+      remappedAnswer: remapped,
+      shuffledIndices: shuffled
+    };
+  });
+}
+
+// ============================================================
+// SESSION PERSISTENCE
+// ============================================================
+function saveSession() {
+  try {
+    const meta = activeQ.map(q => ({ id: q.id, uid: q._uid, si: q.shuffledIndices }));
+    localStorage.setItem('its_session', JSON.stringify(meta));
+    localStorage.setItem('its_answers', JSON.stringify(answered));
+  } catch(e) {}
+}
+
+function loadSession() {
+  try {
+    const metaRaw = localStorage.getItem('its_session');
+    const ansRaw = localStorage.getItem('its_answers');
+    if (!metaRaw) return false;
+    const meta = JSON.parse(metaRaw);
+    if (meta.length !== QUIZ_SIZE) return false;
+    answered = ansRaw ? JSON.parse(ansRaw) : {};
+    activeQ = meta.map(m => {
+      const q = ALL_QUESTIONS.find(x => x.id === m.id);
+      if (!q) return null;
+      const si = m.si;
+      const remapped = q.answer.map(oi => si.indexOf(oi));
+      return { ...q, _uid: m.uid, displayChoices: si.map(i => q.choices[i]), remappedAnswer: remapped, shuffledIndices: si };
+    }).filter(Boolean);
+    return activeQ.length === QUIZ_SIZE;
+  } catch(e) { return false; }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const container = document.getElementById('qc');
+  container.innerHTML = '';
+  activeQ.forEach((q, displayIdx) => {
+    const uid = q._uid;
+    const isAnswered = answered[uid] !== undefined;
+    const isCorrect = isAnswered && checkAns(uid);
+    const isMulti = q.type === 'multi';
+
+    const card = document.createElement('div');
+    card.className = 'qcard' + (isAnswered ? (isCorrect ? ' correct' : ' wrong') : '');
+    card.id = 'card_' + uid;
+
+    const statusClass = isAnswered ? (isCorrect ? 'correct' : 'wrong') : 'unanswered';
+    const statusIcon = isAnswered ? (isCorrect ? '✓' : '✗') : '–';
+
+    const choicesHtml = q.displayChoices.map((c, i) => {
+      let cls = 'choice';
+      let icon = '';
+      if (isAnswered) {
+        cls += ' disabled';
+        const sel = answered[uid];
+        const isSel = sel.includes(i);
+        const isCor = q.remappedAnswer.includes(i);
+        if (isSel && isCor) { cls += ' sc'; icon = '<span class="cicon">✓</span>'; }
+        else if (isSel && !isCor) { cls += ' sw'; icon = '<span class="cicon">✗</span>'; }
+        else if (!isSel && isCor) { cls += ' rc'; icon = '<span class="cicon">✓</span>'; }
+      }
+      const letters = ['A','B','C','D','E','F'];
+      return `<div class="${cls}" onclick="pick('${uid}',${i},${isMulti})">
+        <span class="cletter">${letters[i]}</span>
+        <span class="ctext">${escHtml(c)}</span>
+        ${icon}
+      </div>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="qhead" onclick="toggleCard('${uid}')">
+        <span class="qnum">Q${displayIdx+1}</span>
+        <div class="qtext">${escHtml(q.text)}</div>
+        <span class="qstatus ${statusClass}">${statusIcon}</span>
+        <span class="carrow">▾</span>
+      </div>
+      <div class="qbody">
+        ${isMulti ? '<div class="multi-tag">★ SELECT ALL THAT APPLY</div>' : ''}
+        <div class="choices" id="choices_${uid}">${choicesHtml}</div>
+        <button class="q-submit-btn${isMulti && !isAnswered ? ' show' : ''}" id="sub_${uid}" onclick="submitMulti('${uid}')">Submit Answer</button>
+        <div class="expl${isAnswered ? ' show' : ''}" id="expl_${uid}">${q.expl}</div>
+      </div>`;
+
+    container.appendChild(card);
+  });
+  updateStats();
+  applyFilter();
+}
+
+function escHtml(str) {
+  return str
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+}
+
+function toggleCard(uid) {
+  document.getElementById('card_' + uid)?.classList.toggle('collapsed');
+}
+
+function toggleAll(collapse) {
+  activeQ.forEach(q => {
+    const el = document.getElementById('card_' + q._uid);
+    if (el && !el.classList.contains('hidden')) {
+      el.classList.toggle('collapsed', collapse);
+    }
+  });
+}
+
+// ============================================================
+// INTERACTION
+// ============================================================
+function pick(uid, idx, isMulti) {
+  if (answered[uid] !== undefined) return;
+  if (!isMulti) {
+    answered[uid] = [idx];
+    const q = activeQ.find(x => x._uid === uid);
+    refreshCard(q);
+    updateStats();
+    saveSession();
+  } else {
+    if (!pending[uid]) pending[uid] = [];
+    const pos = pending[uid].indexOf(idx);
+    if (pos >= 0) pending[uid].splice(pos, 1);
+    else pending[uid].push(idx);
+    updatePendingVisual(uid);
+  }
+}
+
+function updatePendingVisual(uid) {
+  const sel = pending[uid] || [];
+  const container = document.getElementById('choices_' + uid);
+  if (!container) return;
+  container.querySelectorAll('.choice').forEach((el, i) => {
+    el.classList.toggle('pending', sel.includes(i));
+  });
+}
+
+function submitMulti(uid) {
+  if (!pending[uid] || pending[uid].length === 0) return;
+  answered[uid] = pending[uid].slice().sort((a,b) => a-b);
+  const q = activeQ.find(x => x._uid === uid);
+  refreshCard(q);
+  updateStats();
+  saveSession();
+}
+
+function checkAns(uid) {
+  const q = activeQ.find(x => x._uid === uid);
+  if (!q) return false;
+  const sel = (answered[uid] || []).slice().sort((a,b) => a-b);
+  const ans = q.remappedAnswer.slice().sort((a,b) => a-b);
+  return JSON.stringify(sel) === JSON.stringify(ans);
+}
+
+function refreshCard(q) {
+  const uid = q._uid;
+  const card = document.getElementById('card_' + uid);
+  if (!card) return;
+  const isCorrect = checkAns(uid);
+  card.classList.remove('correct','wrong');
+  card.classList.add(isCorrect ? 'correct' : 'wrong');
+
+  const letters = ['A','B','C','D','E','F'];
+  const container = document.getElementById('choices_' + uid);
+  container.querySelectorAll('.choice').forEach((el, i) => {
+    el.className = 'choice disabled';
+    const sel = answered[uid];
+    const isSel = sel.includes(i);
+    const isCor = q.remappedAnswer.includes(i);
+    const existing = el.querySelector('.cicon');
+    if (existing) existing.remove();
+    if (isSel && isCor) { el.classList.add('sc'); el.insertAdjacentHTML('beforeend','<span class="cicon">✓</span>'); }
+    else if (isSel && !isCor) { el.classList.add('sw'); el.insertAdjacentHTML('beforeend','<span class="cicon">✗</span>'); }
+    else if (!isSel && isCor) { el.classList.add('rc'); el.insertAdjacentHTML('beforeend','<span class="cicon">✓</span>'); }
+  });
+
+  const st = card.querySelector('.qstatus');
+  st.className = `qstatus ${isCorrect ? 'correct' : 'wrong'}`;
+  st.textContent = isCorrect ? '✓' : '✗';
+
+  const subBtn = document.getElementById('sub_' + uid);
+  if (subBtn) subBtn.style.display = 'none';
+
+  const expl = document.getElementById('expl_' + uid);
+  if (expl) expl.classList.add('show');
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  const keys = Object.keys(answered).filter(uid => activeQ.find(q => q._uid === uid));
+  const total = QUIZ_SIZE;
+  const done = keys.length;
+  const correct = keys.filter(uid => checkAns(uid)).length;
+  const wrong = done - correct;
+  const unanswered = total - done;
+
+  document.getElementById('st-score').textContent = `${correct}/${total}`;
+  document.getElementById('st-correct').textContent = correct;
+  document.getElementById('st-wrong').textContent = wrong;
+  document.getElementById('st-unanswered').textContent = unanswered;
+  document.getElementById('pfill').style.width = (done / total * 100) + '%';
+}
+
+// ============================================================
+// FILTER & SEARCH
+// ============================================================
+function setFilter(type, btn) {
+  curFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function doSearch(val) {
+  curSearch = val.toLowerCase();
+  applyFilter();
+}
+
+function applyFilter() {
+  activeQ.forEach(q => {
+    const uid = q._uid;
+    const card = document.getElementById('card_' + uid);
+    if (!card) return;
+    let show = true;
+    if (curFilter === 'unanswered') show = answered[uid] === undefined;
+    else if (curFilter === 'correct') show = answered[uid] !== undefined && checkAns(uid);
+    else if (curFilter === 'wrong') show = answered[uid] !== undefined && !checkAns(uid);
+    if (show && curSearch) {
+      show = q.text.toLowerCase().includes(curSearch) ||
+             q.displayChoices.some(c => c.toLowerCase().includes(curSearch));
+    }
+    card.classList.toggle('hidden', !show);
+  });
+}
+
+// ============================================================
+// SUBMIT ALL
+// ============================================================
+function submitAll() {
+  const keys = Object.keys(answered).filter(uid => activeQ.find(q => q._uid === uid));
+  const total = QUIZ_SIZE;
+  const correct = keys.filter(uid => checkAns(uid)).length;
+  const wrong = keys.length - correct;
+  const skipped = total - keys.length;
+  const pct = Math.round(correct / total * 100);
+
+  document.getElementById('ppct').textContent = pct + '%';
+  document.getElementById('pcor').textContent = correct;
+  document.getElementById('pwrg').textContent = wrong;
+  document.getElementById('pskp').textContent = skipped;
+
+  const grade = document.getElementById('pgrade');
+  const passed = pct >= 75;
+  grade.className = 'pop-grade ' + (passed ? 'pass' : 'fail');
+  grade.textContent = passed ? `🎉 PASSED! (${pct}%)` : `📚 Keep Studying (${pct}%)`;
+
+  document.getElementById('popup').classList.add('show');
+}
+
+function closePopup() {
+  document.getElementById('popup').classList.remove('show');
+}
+
+// ============================================================
+// NEW SET
+// ============================================================
+function newSet() {
+  if (!confirm('Get a new random set of 40 questions? Your current answers will be cleared.')) return;
+  answered = {};
+  pending = {};
+  localStorage.removeItem('its_session');
+  localStorage.removeItem('its_answers');
+  activeQ = pickSet();
+  saveSession();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// SCROLL TOP
+// ============================================================
+window.addEventListener('scroll', () => {
+  document.getElementById('scrolltop').classList.toggle('show', window.scrollY > 400);
+});
+
+// ============================================================
+// INIT
+// ============================================================
+if (!loadSession()) {
+  activeQ = pickSet();
+  saveSession();
+}
+render();
+</script>
+</body>
+</html>
